@@ -2,7 +2,7 @@ CC=clang-8
 CXX=clang++-8
 
 
-ENOKIPREFIX=$(HOME)/src/enoki
+ENOKIPREFIX=externals/enoki
 
 TTPREFIX=externals/ThreadTracer
 
@@ -26,6 +26,15 @@ osino: $(OSINOOBJS) $(TTOBJS)
 #run: osino
 #	./osino > im.pgm
 #	-display im.pgm
+
+output.obj: osino
+	LD_LIBRARY_PATH=$(LD_LIBRARY_PATH):externals/enoki/build ./osino
+
+clean:
+	rm -f output.obj
+	rm -f *.a
+	rm -f $(TTOBJS)
+	rm -f $(OSINOOBJS)
 
 -include $(OSINOOBJS:.o=.d)
 
