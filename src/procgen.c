@@ -11,8 +11,8 @@
 #include "osino.h"
 #include "surface.h"
 
-static float fielddensity[BLOCKSIZEHI];
-static uint8_t fieldtype[BLOCKSIZEHI];
+static float fielddensity[BLKSIZ];
+static uint8_t fieldtype[BLKSIZ];
 
 static int numtria=0;
 
@@ -26,12 +26,12 @@ static uint8_t surface_m[MAXVERTS  ];
 
 void splat(void)
 {
-	float o = 0.5f * ( BLOCKRESHI-1 );
+	float o = 0.5f * ( BLKRES-1 );
 	float s = 1.0f / o;
 	float *writer = fielddensity;
-	for (int x=0; x<BLOCKRESHI; ++x)
-		for (int y=0; y<BLOCKRESHI; ++y)
-			for (int z=0; z<BLOCKRESHI; ++z)
+	for (int x=0; x<BLKRES; ++x)
+		for (int y=0; y<BLKRES; ++y)
+			for (int z=0; z<BLKRES; ++z)
 			{
 				float xc = (x-o) * s;
 				float yc = (y-o) * s;
@@ -73,7 +73,7 @@ int main(int argc, char* argv[])
 	feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
 	const int numt = procgen_asteroid(fielddensity, fieldtype, surface_v, surface_n, surface_m);
 	fprintf(stderr,"Generated %d triangles.\n", numt);
-	const float off = -0.5f * (BLOCKRESHI-1);
+	const float off = -0.5f * (BLKRES-1);
 	const float offset[3] = { off, off, off };
 	surface_writeobj("output.obj", numt, surface_v, surface_n, offset);
 }

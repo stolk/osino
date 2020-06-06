@@ -32,14 +32,14 @@ static float vertex_offsets[ 8 ][ 3 ] =
 // Index offsets for cube corners.
 static const int vertex_index_offset[ 8 ] =
 {
-	0,					// xyz
-	BLOCKRESHI*BLOCKRESHI,			// Xyz
-	BLOCKRESHI*BLOCKRESHI + BLOCKRESHI,	// XYz
-	BLOCKRESHI,				// xYz
-	1,					// xyZ
-	BLOCKRESHI*BLOCKRESHI + 1,		// XyZ
-	BLOCKRESHI*BLOCKRESHI + BLOCKRESHI + 1,	// XYZ
-	BLOCKRESHI + 1,				// xYZ
+	0,				// xyz
+	BLKRES*BLKRES,			// Xyz
+	BLKRES*BLKRES + BLKRES,		// XYz
+	BLKRES,				// xYz
+	1,				// xyZ
+	BLKRES*BLKRES + 1,		// XyZ
+	BLKRES*BLKRES + BLKRES + 1,	// XYZ
+	BLKRES + 1,			// xYZ
 };
 
 
@@ -382,9 +382,9 @@ static int mc_process_cell_hi
 	uint8_t* __restrict__ outputm	// materials
 )
 {
-	assert( x >= 1 && y >= 1 && z >= 1 && x < BLOCKRESHI-1 && y < BLOCKRESHI-1 && z < BLOCKRESHI-1 );
-	const int stridex = BLOCKRESHI*BLOCKRESHI;
-	const int stridey = BLOCKRESHI;
+	assert( x >= 1 && y >= 1 && z >= 1 && x < BLKRES-1 && y < BLKRES-1 && z < BLKRES-1 );
+	const int stridex = BLKRES*BLKRES;
+	const int stridey = BLKRES;
 	const int stridez = 1;
 	
 	// retrieve the 8 corner values for this cell.
@@ -551,7 +551,7 @@ int surface_extract
 	uint8_t* __restrict__ m = outputm;
 	int totaltria = 0;
 	const int lo=1;
-	const int hi=BLOCKRESHI-1;
+	const int hi=BLKRES-1;
 	for (  int x=lo; x<hi; ++x )
 	{
 		for ( int y=lo; y<hi; ++y )

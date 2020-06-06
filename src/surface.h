@@ -3,10 +3,10 @@
 // tables by Cory Bloyd.
 
 // The resolution: number of samples per dimension.
-#define BLOCKRESHI	128
+#define BLKRES		128
 
 // Total size of a 3D block.
-#define BLOCKSIZEHI	(BLOCKRESHI*BLOCKRESHI*BLOCKRESHI)
+#define BLKSIZ		(BLKRES*BLKRES*BLKRES)
 
 
 // Extract a surface from a 3D field using an iso value.
