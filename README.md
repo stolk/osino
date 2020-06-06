@@ -8,6 +8,8 @@ It is derived from my C-port [sino](https://github.com/stolk/sino) but improves 
 * Avoids memory gather by having purely procedural pseudo random directions.
 * More varied noise due to using pseudo random directions instead of using 12 cardinal directions that are shuffled.
 
+![Procgen Asteroid](images/asteroid.png "Procgen Asteroid")
+
 ## License
 3-clause BSD
 
@@ -46,5 +48,4 @@ $ make output.obj
 ```
 
 
-![Procgen Asteroid](images/asteroid.png "Procgen Asteroid")
 
