@@ -10,6 +10,8 @@ It is derived from my C-port [sino](https://github.com/stolk/sino) but improves 
 * Avoids memory gather by having purely procedural pseudo random directions from [Murmur2](https://en.wikipedia.org/wiki/MurmurHash) hashing.
 * More varied noise due to using pseudo random directions instead of using 12 cardinal directions that are shuffled.
 
+It comes with a Marching Cubes implementation to extract a surface, so that a 3D density field can be visualized.
+
 ![Procgen Asteroid](images/asteroid.png "Procgen Asteroid")
 
 ## License
