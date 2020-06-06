@@ -1,0 +1,6 @@
+[submodule "externals/ThreadTracer"]
+	path = externals/ThreadTracer
+	url = https://github.com/stolk/ThreadTracer
+[submodule "externals/enoki"]
+	path = externals/enoki
+	url = https://github.com/mitsuba-renderer/enoki

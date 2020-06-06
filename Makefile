@@ -3,7 +3,8 @@ CXX=clang++-8
 
 
 ENOKIPREFIX=$(HOME)/src/enoki
-TTPREFIX=$(HOME)/src/ThreadTracer
+
+TTPREFIX=externals/ThreadTracer
 
 OSINOOBJS=\
 	src/osino.o \
