@@ -15,8 +15,10 @@ This is an Enoki-port of the [OpenSimplex.java code by Stefan Gustavson](http://
 Install cuda development enviromnent. I used /usr/local/cuda for the destination.
 
 Get the source and dependencies, recursively:
-.
-$ git clone --recursive https://github.com/stolk/osino
+
+```
+$ git clone --recursive git@github.com:stolk/osino.git
+```
 
 Build enoki:
 
