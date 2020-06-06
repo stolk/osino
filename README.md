@@ -57,7 +57,6 @@ The sample coordinates and noise values are contained in Enoki dynamic arrays wi
 ```
 typedef enoki::CUDAArray<float>    FV;  // Flt vector
 ```
-
 To get noise values for a specified set of coordinates, use:
 ```
 FV osino_2d(FV x, FV y);
@@ -68,5 +67,6 @@ Or if you want multi octave noise (also called fractal noise) then use:
 FV osino_2d_4o(FV x, FV y);
 FV osino_3d_4o(FV x, FV y, FV z);
 ```
+Note that to make it worthwhile to have a round trip to the GPU, you need to compute a lot of values in one go. Which means millions of noise values, not thousands. Otherwise the communication overhead would defeat the purpose of doing this GPU-side. In that case, you are better off using the AVX backend of Enoki.
 
 
