@@ -11,5 +11,13 @@
 //
 // License: 3-clause BSD to match Enoki License.
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 extern void osino_mkfield(float* volume);
+
+#ifdef __cplusplus
+}
+#endif
 

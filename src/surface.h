@@ -8,6 +8,9 @@
 // Total size of a 3D block.
 #define BLKSIZ		(BLKRES*BLKRES*BLKRES)
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Extract a surface from a 3D field using an iso value.
 extern int surface_extract
@@ -31,4 +34,7 @@ extern void surface_writeobj
 	const float* offs	// x,y,z offset to apply to all vertices.
 );
 
+#ifdef __cplusplus
+} // extern C
+#endif
 
