@@ -1,4 +1,4 @@
-#osino - An Open Simplex Noise implementation for Enoki/CUDA.
+# osino - An Open Simplex Noise implementation for Enoki/CUDA.
 
 This is an Enoki-port of the [OpenSimplex.java code by Stefan Gustavson](http://webstaff.itn.liu.se/~stegu/simplexnoise/SimplexNoise.java).
 
