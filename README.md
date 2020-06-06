@@ -51,5 +51,22 @@ Test osino:
 $ make output.obj
 ```
 
+## API
+
+The sample coordinates and noise values are contained in Enoki dynamic arrays with this signature:
+```
+typedef enoki::CUDAArray<float>    FV;  // Flt vector
+```
+
+To get noise values for a specified set of coordinates, use:
+```
+FV osino_2d(FV x, FV y);
+FV osino_3d(FV x, FV y, FV z);
+```
+Or if you want multi octave noise (also called fractal noise) then use:
+```
+FV osino_2d_4o(FV x, FV y);
+FV osino_3d_4o(FV x, FV y, FV z);
+```
 
 
