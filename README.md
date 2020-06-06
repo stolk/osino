@@ -1,11 +1,13 @@
 # osino - An Open Simplex Noise implementation for Enoki/CUDA.
 
-This is an Enoki-port of the [OpenSimplex.java code by Stefan Gustavson](http://webstaff.itn.liu.se/~stegu/simplexnoise/SimplexNoise.java).
+This is an 
+[Enoki](https://github.com/mitsuba-renderer/enoki)-port
+of the [OpenSimplex.java code by Stefan Gustavson](http://webstaff.itn.liu.se/~stegu/simplexnoise/SimplexNoise.java).
 
 It is derived from my C-port [sino](https://github.com/stolk/sino) but improves in several ways:
 
-* Uses Enoki and CUDA to run on the GPU.
-* Avoids memory gather by having purely procedural pseudo random directions.
+* Uses Enoki and [CUDA](https://developer.nvidia.com/cuda-downloads) to run on the GPU.
+* Avoids memory gather by having purely procedural pseudo random directions from [Murmur2](https://en.wikipedia.org/wiki/MurmurHash) hashing.
 * More varied noise due to using pseudo random directions instead of using 12 cardinal directions that are shuffled.
 
 ![Procgen Asteroid](images/asteroid.png "Procgen Asteroid")
