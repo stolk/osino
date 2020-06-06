@@ -2,7 +2,7 @@
 
 This is an 
 [Enoki](https://github.com/mitsuba-renderer/enoki)-port
-of the [OpenSimplex.java code by Stefan Gustavson](http://webstaff.itn.liu.se/~stegu/simplexnoise/SimplexNoise.java).
+of the [OpenSimplex.java code by Stefan Gustavson](http://webstaff.itn.liu.se/~stegu/simplexnoise/).
 
 It is derived from my C-port [sino](https://github.com/stolk/sino) but improves in several ways:
 
