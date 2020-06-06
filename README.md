@@ -12,7 +12,7 @@ This is an Enoki-port of the [OpenSimplex.java code by Stefan Gustavson](http://
 
 ## Building
 
-Install cuda development enviromnent. I used /usr/local/cuda for the destination.
+Install cuda development environment. I used /usr/local/cuda for the destination.
 
 Get the source and dependencies, recursively:
 
@@ -26,7 +26,7 @@ Build enoki:
 $ cd externals/enoki
 $ mkdir build
 $ cd build
-$ $ CXX=clang++-8 CC=clang-8 cmake -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DCMAKE_BUILD_TYPE=Debug -DENOKI_CUDA=ON ..
+$ CXX=clang++-8 CC=clang-8 cmake -DCMAKE_CUDA_COMPILER=/usr/local/cuda/bin/nvcc -DCMAKE_BUILD_TYPE=Debug -DENOKI_CUDA=ON ..
 $ make
 $ cd ../../..
 ```

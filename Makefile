@@ -6,11 +6,15 @@ ENOKIPREFIX=externals/enoki
 
 TTPREFIX=externals/ThreadTracer
 
+
+# Open Simplex Noise object files.
 OSINOOBJS=\
 	src/osino.o \
 	src/surface.o \
 	src/procgen.o
 
+
+# ThreadTracer object files.
 TTOBJS=\
 	$(TTPREFIX)/threadtracer.o
 
