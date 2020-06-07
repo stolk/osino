@@ -400,7 +400,6 @@ static int mc_process_cell_hi
 	int caseidx = 0;
 	for ( int i=0; i<8; ++i )
 		caseidx = caseidx | ( ( corner_values[ i ] <= isoval ) ? ( 1<<i ) : 0 );
-	//caseidx = z==4 ? 0xf0 : 0.0f; // TEST
 
 	int edgeflags = edge_flags[ caseidx ];
 	if ( edgeflags == 0 ) // If there are no edge intersections, we yield zero triangles. (Most common case!)
@@ -410,10 +409,6 @@ static int mc_process_cell_hi
 	float corner_normals[ 8 ][ 3 ];
 	for ( int i=0; i<8; ++i )
 	{
-		const int cx = x + vertex_offsets[ i ][ 0 ];
-		const int cy = y + vertex_offsets[ i ][ 1 ];
-		const int cz = z + vertex_offsets[ i ][ 2 ];
-
 		const int i0 = corner_idx[ i ];
 
 		const int iprvx = i0 - stridex;
