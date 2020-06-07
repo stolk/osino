@@ -118,7 +118,7 @@ static inline FV dot_3d( FV ax, FV ay, FV az, FV bx, FV by, FV bz )
 
 
 // Open Simplex Noise 2D
-static FV osino_2d(FV x, FV y)
+FV osino_2d(FV x, FV y)
 {
 	// Skew
 	const FV s = ( x + y ) * F2;
@@ -155,7 +155,7 @@ static FV osino_2d(FV x, FV y)
 
 
 // Open Simplex Noise 3D
-static FV osino_3d(FV x, FV y, FV z)
+FV osino_3d(FV x, FV y, FV z)
 {
 	// Skew
 	const FV s = ( x+y+z ) * F3;
@@ -229,7 +229,7 @@ static FV osino_3d(FV x, FV y, FV z)
 
 
 // Do 4 octaves of open simplex noise in 2D.
-static inline FV osino_2d_4o( FV x, FV y )
+FV osino_2d_4o( FV x, FV y )
 {
 	const FV n0 = osino_2d(  x,   y);
 	const FV n1 = osino_2d(2*x, 2*y);
@@ -240,7 +240,7 @@ static inline FV osino_2d_4o( FV x, FV y )
 
 
 // Do 4 octaves of open simplex noise in 3D.
-static inline FV osino_3d_4o( FV x, FV y, FV z )
+FV osino_3d_4o( FV x, FV y, FV z )
 {
 	const FV n0 = osino_3d(  x,   y,   z);
 	const FV n1 = osino_3d(2*x, 2*y, 2*z);
