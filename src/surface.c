@@ -401,9 +401,11 @@ static int mc_process_cell_hi
 	for ( int i=0; i<8; ++i )
 		caseidx = caseidx | ( ( corner_values[ i ] <= isoval ) ? ( 1<<i ) : 0 );
 
-	int edgeflags = edge_flags[ caseidx ];
-	if ( edgeflags == 0 ) // If there are no edge intersections, we yield zero triangles. (Most common case!)
+	// most common case is all points inside or all points outside: no triangles.
+	if ( caseidx==0 || caseidx==0xff )
 		return 0;
+
+	const int edgeflags = edge_flags[ caseidx ];
 
 	// Determine the corner normals
 	float corner_normals[ 8 ][ 3 ];
@@ -460,15 +462,15 @@ static int mc_process_cell_hi
 			const int i0 = edge_connections[ edge ][ 0 ];
 			const int i1 = edge_connections[ edge ][ 1 ];
 			//printf( "edge from %d(%f) to %d(%f)\n", i0, corner_values[ i0 ], i1, corner_values[ i1 ] );
-			float offs = get_offset( corner_values[ i0 ], corner_values[ i1 ], isoval );
+			const float offs = get_offset( corner_values[ i0 ], corner_values[ i1 ], isoval );
 			edge_verts[ edge ][ 0 ] = x + vertex_offsets[ i0 ][ 0 ] + offs * edge_directions[ edge ][ 0 ];
 			edge_verts[ edge ][ 1 ] = y + vertex_offsets[ i0 ][ 1 ] + offs * edge_directions[ edge ][ 1 ];
 			edge_verts[ edge ][ 2 ] = z + vertex_offsets[ i0 ][ 2 ] + offs * edge_directions[ edge ][ 2 ];
 			const float t0 = 1.0f - offs;
 			const float t1 = offs;
-			float nx = t0 * corner_normals[ i0 ][ 0 ] + t1 * corner_normals[ i1 ][ 0 ];
-			float ny = t0 * corner_normals[ i0 ][ 1 ] + t1 * corner_normals[ i1 ][ 1 ];
-			float nz = t0 * corner_normals[ i0 ][ 2 ] + t1 * corner_normals[ i1 ][ 2 ];
+			const float nx = t0 * corner_normals[ i0 ][ 0 ] + t1 * corner_normals[ i1 ][ 0 ];
+			const float ny = t0 * corner_normals[ i0 ][ 1 ] + t1 * corner_normals[ i1 ][ 1 ];
+			const float nz = t0 * corner_normals[ i0 ][ 2 ] + t1 * corner_normals[ i1 ][ 2 ];
 			const float lengthsq  = nx*nx + ny*ny + nz*nz;
 			const float invlen = lengthsq > 0.0f ? 1.0f/sqrtf(lengthsq) : 1;
 			edge_norms[ edge ][ 0 ] = nx * invlen;

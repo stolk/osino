@@ -255,7 +255,7 @@ extern "C" {
 
 void osino_mkfield(float* volume)
 {
-	const int mag = 7;
+	const int mag = BLKMAG;
 	const int sz = (1<<mag);
 	const int msk = sz-1;
 	const int cnt = sz * sz * sz;
@@ -299,17 +299,17 @@ void osino_mkfield(float* volume)
 	memcpy(volume, data, cnt*sizeof(float));
 }
 
-
+#if 0
 static void bench_osino2d(bool write)
 {
 	TT_BEGIN("osino_2d");
 	const int mag = 13;
-	const int sz  = (1<<13);
+	const int sz  = (1<<mag);
 	const int cnt = sz * sz;
 
 	const IV ix = enoki::arange< IV >( cnt );
 	const IV xc = ix & 0x001fff;
-	const IV yc = enoki::sr<13>(ix) & 0x001fff;
+	const IV yc = enoki::sr<mag>(ix) & 0x001fff;
 
 	const FV x = FV(xc) * 0.00101f;
 	const FV y = FV(yc) * 0.00102f;
@@ -351,12 +351,12 @@ static void bench_osino3d(bool write)
 {
 	TT_BEGIN("osino_3d");
 	const int mag = 13;
-	const int sz  = (1<<13);
+	const int sz  = (1<<mag);
 	const int cnt = sz * sz;
 
 	const IV ix = enoki::arange< IV >( cnt );
 	const IV xc = ix & 0x001fff;
-	const IV yc = enoki::sr<13>(ix) & 0x001fff;
+	const IV yc = enoki::sr<mag>(ix) & 0x001fff;
 	const IV zc(700);
 
 	const FV x = FV(xc) * 0.00101f;
@@ -392,6 +392,7 @@ static void bench_osino3d(bool write)
 		free(im);
 	}
 }
+#endif
 
 
 #if defined(XSTANDALONE)

@@ -3,7 +3,7 @@
 // tables by Cory Bloyd.
 
 // The resolution: number of samples per dimension.
-#define BLKRES		128
+#define BLKRES		(1<<BLKMAG)
 
 // Total size of a 3D block.
 #define BLKSIZ		(BLKRES*BLKRES*BLKRES)
