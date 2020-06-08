@@ -24,7 +24,7 @@
 #	define ALIGNEDPST __attribute__ ((aligned (32)))
 #endif
 
-#define USESIMD	1
+#define USESIMD	0
 
 
 // Vertex offsets for cube corners.
@@ -367,7 +367,7 @@ static __inline float get_offset( float fValue1, float fValue2, float fValueDesi
 }
 
 #if USESIMD
-#	define MAXPERCASE	80000
+#	define MAXPERCASE	40000
 typedef int caselist_t[MAXPERCASE];
 
 static inline int mc_process_column
@@ -394,14 +394,14 @@ static inline int mc_process_column
 			),
 			z8
 		);
-	__m256 i1 = _mm256_add_epi32( i0, stridex );
-	__m256 i2 = _mm256_add_epi32( i1, stridey );
-	__m256 i3 = _mm256_add_epi32( i0, stridey );
+	__m256i i1 = _mm256_add_epi32( i0, stridex );
+	__m256i i2 = _mm256_add_epi32( i1, stridey );
+	__m256i i3 = _mm256_add_epi32( i0, stridey );
 
-	__m256 i4 = _mm256_add_epi32( i0, stridez );
-	__m256 i5 = _mm256_add_epi32( i1, stridez );
-	__m256 i6 = _mm256_add_epi32( i2, stridez );
-	__m256 i7 = _mm256_add_epi32( i3, stridez );
+	__m256i i4 = _mm256_add_epi32( i0, stridez );
+	__m256i i5 = _mm256_add_epi32( i1, stridez );
+	__m256i i6 = _mm256_add_epi32( i2, stridez );
+	__m256i i7 = _mm256_add_epi32( i3, stridez );
 
 	ALIGNEDPRE int cases[BLKRES] ALIGNEDPST;
 
@@ -409,30 +409,24 @@ static inline int mc_process_column
 	for (int z=0; z<BLKRES; z+=8)
 	{
 		// Get corner values.
-		const __m256 corval[8] = 
-		{
-			_mm256_i32gather_ps( fielddensity, i0, 4 ),
-			_mm256_i32gather_ps( fielddensity, i1, 4 ),
-			_mm256_i32gather_ps( fielddensity, i2, 4 ),
-			_mm256_i32gather_ps( fielddensity, i3, 4 ),
-			_mm256_i32gather_ps( fielddensity, i4, 4 ),
-			_mm256_i32gather_ps( fielddensity, i5, 4 ),
-			_mm256_i32gather_ps( fielddensity, i6, 4 ),
-			_mm256_i32gather_ps( fielddensity, i7, 4 )
-		};
-#if 0
-		ALIGNEDPRE int iv[8] ALIGNEDPST;
-		_mm256_store_si256(iv, i0); for (int j=0; j<8; ++j) { assert(iv[j]>=0); assert(iv[j]<BLKSIZ); }
-#endif
-		__m256 msk8 = _mm256_set1_epi32(1);
-		__m256i bit0 = _mm256_and_si256(_mm256_cmp_ps(corval[0], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
-		__m256i bit1 = _mm256_and_si256(_mm256_cmp_ps(corval[1], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
-		__m256i bit2 = _mm256_and_si256(_mm256_cmp_ps(corval[2], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
-		__m256i bit3 = _mm256_and_si256(_mm256_cmp_ps(corval[3], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
-		__m256i bit4 = _mm256_and_si256(_mm256_cmp_ps(corval[4], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
-		__m256i bit5 = _mm256_and_si256(_mm256_cmp_ps(corval[5], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
-		__m256i bit6 = _mm256_and_si256(_mm256_cmp_ps(corval[6], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
-		__m256i bit7 = _mm256_and_si256(_mm256_cmp_ps(corval[7], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
+		const __m256 v0 =_mm256_i32gather_ps( fielddensity, i0, 4 );
+		const __m256 v1 =_mm256_i32gather_ps( fielddensity, i1, 4 );
+		const __m256 v2 =_mm256_i32gather_ps( fielddensity, i2, 4 );
+		const __m256 v3 =_mm256_i32gather_ps( fielddensity, i3, 4 );
+		const __m256 v4 =_mm256_i32gather_ps( fielddensity, i4, 4 );
+		const __m256 v5 =_mm256_i32gather_ps( fielddensity, i5, 4 );
+		const __m256 v6 =_mm256_i32gather_ps( fielddensity, i6, 4 );
+		const __m256 v7 =_mm256_i32gather_ps( fielddensity, i7, 4 );
+
+		__m256i msk8 = _mm256_set1_epi32(1);
+		__m256i bit0 = _mm256_and_si256(_mm256_cmp_ps(v0, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,0));
+		__m256i bit1 = _mm256_and_si256(_mm256_cmp_ps(v1, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,1));
+		__m256i bit2 = _mm256_and_si256(_mm256_cmp_ps(v2, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,2));
+		__m256i bit3 = _mm256_and_si256(_mm256_cmp_ps(v3, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,3));
+		__m256i bit4 = _mm256_and_si256(_mm256_cmp_ps(v4, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,4));
+		__m256i bit5 = _mm256_and_si256(_mm256_cmp_ps(v5, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,5));
+		__m256i bit6 = _mm256_and_si256(_mm256_cmp_ps(v6, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,6));
+		__m256i bit7 = _mm256_and_si256(_mm256_cmp_ps(v7, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,7));
 		__m256i caseidx8 =
 			_mm256_add_epi32(
 				_mm256_add_epi32(
@@ -448,7 +442,7 @@ static inline int mc_process_column
 		_mm256_store_si256((__m256i*)(cases+z), caseidx8);
 
 		// advance to next 8.
-		const __m256 step = _mm256_set1_epi32(8);
+		const __m256i step = _mm256_set1_epi32(8);
 		i0 = _mm256_add_epi32(i0, step);
 		i1 = _mm256_add_epi32(i1, step);
 		i2 = _mm256_add_epi32(i2, step);
@@ -466,6 +460,8 @@ static inline int mc_process_column
 		int ca = cases[i];
 		if (ca!=0 && ca!=0xff)
 		{
+			assert(ca>0);
+			assert(ca<0xff);
 			if (listsizes[ca] >= MAXPERCASE)
 				fprintf(stderr,"Case %x exceeds num instances: %d\n", ca, listsizes[ca]);
 			assert(listsizes[ca]<MAXPERCASE);
@@ -836,34 +832,38 @@ static inline int mc_process_cell_hi
 
 
 #if USESIMD
-static __thread caselist_t caselists[256];
-static __thread int listsizes[256];
+static caselist_t caselists[4][256];	// NOTE: per thread, because TLS doesn't work!
+static int listsizes[4][256];		// NOTE: per thread, because TLS doesn't work!
 // Marching cubes for an entire block.
 int surface_extract
 (
 	const float* __restrict__ fielddensity,
 	const uint8_t* __restrict__ fieldtype,
  	float isoval,
+	int xlo,
+	int xhi,
+	int ylo,
+	int yhi,
  	float* __restrict__ outputv,
  	float* __restrict__ outputn,
  	uint8_t* __restrict__ outputm,
- 	int maxtria
+ 	int maxtria,
+	int threadnr
 )
 {
+	assert(threadnr>=0 && threadnr<4);
 	TT_BEGIN("classify");
-	memset(listsizes, 0, sizeof(listsizes));
+	memset(listsizes[threadnr], 0, 256*sizeof(int));
 	int cnt=0;
-	const int lo=1;
-	const int hi=BLKRES-1;
-	for (int x=lo; x<hi; ++x)
-		for (int y=lo; y<hi; ++y)
+	for (int x=xlo; x<xhi; ++x)
+		for (int y=ylo; y<yhi; ++y)
 		{
-			const int nonempty = mc_process_column(isoval, fielddensity, x,y, caselists, listsizes);
+			const int nonempty = mc_process_column(isoval, fielddensity, x,y, caselists[threadnr], listsizes[threadnr]);
 			//fprintf(stderr,"x,y: %d,%d -> %d\n", x,y, nonempty);
 			cnt += nonempty;
 		}
 	TT_END("classify");
-	fprintf(stderr, "%d out of %d cells have geometry.\n", cnt, BLKSIZ);
+	//fprintf(stderr, "%d out of %d cells have geometry.\n", cnt, BLKSIZ);
 
 	// Now we have all voxels, sorted by case.
 	// We need to generate geometry for them.
@@ -880,8 +880,8 @@ int surface_extract
 		const int numt = mc_process_case_instances
 		(
 			ca,
-			listsizes[ca],
-			caselists[ca],
+			listsizes[threadnr][ca],
+			caselists[threadnr][ca],
  			fielddensity,
 			fieldtype,
 			isoval,
@@ -908,23 +908,29 @@ int surface_extract
 	const float* __restrict__ fielddensity,
 	const uint8_t* __restrict__ fieldtype,
  	float isoval,
+	int xlo,
+	int xhi,
+	int ylo,
+	int yhi,
  	float* __restrict__ outputv,
  	float* __restrict__ outputn,
  	uint8_t* __restrict__ outputm,
- 	int maxtria
+ 	int maxtria,
+	int threadnr
 )
 {
 	float* __restrict__ v = outputv;
 	float* __restrict__ n = outputn;
 	uint8_t* __restrict__ m = outputm;
 	int totaltria = 0;
-	const int lo=1;
-	const int hi=BLKRES-1;
-	for (  int x=lo; x<hi; ++x )
+	const int zlo=1;
+	const int zhi=BLKRES-1;
+	int nonempty = 0;
+	for (  int x=xlo; x<xhi; ++x )
 	{
-		for ( int y=lo; y<hi; ++y )
+		for ( int y=ylo; y<yhi; ++y )
 		{
-			for ( int z=lo; z<hi; ++z )
+			for ( int z=zlo; z<zhi; ++z )
 			{
 				assert( totaltria < maxtria - 5 );
 				const int numt = mc_process_cell_hi
@@ -940,9 +946,11 @@ int surface_extract
 				n += numt * 3 * 3;
 				m += numt * 3;
 				totaltria += numt;
+				if (numt) nonempty++;
 			}
 		}
 	}
+	//fprintf(stderr, "Non empty cells: %d of %d\n", nonempty, BLKRES*BLKRES*BLKRES);
 	return totaltria;
 }
 #endif

@@ -18,10 +18,15 @@ extern int surface_extract
 	const float* __restrict__ fielddensity,		// density field.
 	const uint8_t* __restrict__ fieldtype,		// materials.
 	float isoval,					// iso value that separates volumes.
+	int xlo,					// x-range
+	int xhi,
+	int ylo,					// y-range
+	int yhi,
 	float*  __restrict__ outputv,			// surface verts
 	float*  __restrict__ outputn,			// surface normals
 	uint8_t*  __restrict__ outputm,			// surface materials
-	int maxtria					// maximum number of triangles.
+	int maxtria,					// maximum number of triangles.
+	int threadnr					// Use scratch pool 0,1,2 or 3.
 );
 
 // Dump geometry to Wavefront OBJ file.

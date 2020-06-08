@@ -293,8 +293,10 @@ void osino_mkfield(float* volume)
 	enoki::cuda_sync();
 	const float* data = field.managed().data();
 
+#if 0
 	const char* whos = enoki::cuda_whos();
 	fprintf(stderr, "%s", whos);
+#endif
 
 	memcpy(volume, data, cnt*sizeof(float));
 }

@@ -57,10 +57,13 @@ int procgen_asteroid(float* fdens, uint8_t* ftype, float* v, float* n, uint8_t* 
 		fdens,
 		ftype,
 		isoval,
+		1,BLKRES-1,
+		1,BLKRES-1,
 		v,
 		n,
 		m,
-		MAXTRIA
+		MAXTRIA,
+		0
 	);
 	return numtria;
 }
