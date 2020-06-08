@@ -24,7 +24,7 @@
 #	define ALIGNEDPST __attribute__ ((aligned (32)))
 #endif
 
-#define USESIMD	0
+#define USESIMD	1
 
 
 // Vertex offsets for cube corners.
