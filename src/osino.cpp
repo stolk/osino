@@ -253,8 +253,11 @@ FV osino_3d_4o( FV x, FV y, FV z )
 extern "C" {
 
 
-void osino_mkfield(float* volume)
+static FV* field=0;
+
+void osino_computefield(void)
 {
+	if (!field) field = new FV;
 	const int mag = BLKMAG;
 	const int sz = (1<<mag);
 	const int msk = sz-1;
@@ -287,18 +290,34 @@ void osino_mkfield(float* volume)
 	const FV len = enoki::sqrt(lsq);
 	const FV d = 2.0f - 4.0f * len;
 	const FV v = osino_3d_4o(1.2f*x,1.2f*y,1.2f*z);
-	const FV field = enoki::clamp(v + d, -1, 1);
+	*field = enoki::clamp(v + d, -1, 1);
+	TT_BEGIN("cuda_eval");
+	enoki::cuda_eval(); // may return before the GPU finished executing the kernel.
+	TT_END  ("cuda_eval");
+}
 
-	enoki::cuda_eval();
-	enoki::cuda_sync();
-	const float* data = field.managed().data();
+
+void osino_collectfield(float* __restrict volume)
+{
+	//enoki::cuda_sync();
+	const float* data = field->managed().data();
 
 #if 0
 	const char* whos = enoki::cuda_whos();
 	fprintf(stderr, "%s", whos);
 #endif
 
+	const int mag = BLKMAG;
+	const int sz = (1<<mag);
+	const int cnt = sz * sz * sz;
 	memcpy(volume, data, cnt*sizeof(float));
+}
+
+
+void osino_mkfield(float* __restrict volume)
+{
+	osino_computefield();
+	osino_collectfield(volume);
 }
 
 #if 0
