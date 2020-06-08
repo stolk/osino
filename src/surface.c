@@ -836,8 +836,8 @@ static inline int mc_process_cell_hi
 
 
 #if USESIMD
-static caselist_t caselists[256];
-static int listsizes[256];
+static __thread caselist_t caselists[256];
+static __thread int listsizes[256];
 // Marching cubes for an entire block.
 int surface_extract
 (
@@ -877,7 +877,7 @@ int surface_extract
 	// For each of the cases...
 	for (int ca=1; ca<0xff; ca++)
 	{
-		int numt = mc_process_case_instances
+		const int numt = mc_process_case_instances
 		(
 			ca,
 			listsizes[ca],
@@ -899,6 +899,7 @@ int surface_extract
 	return totaltria;
 }
 #endif
+
 
 #if !USESIMD
 // Marching cubes for an entire block.
@@ -926,7 +927,7 @@ int surface_extract
 			for ( int z=lo; z<hi; ++z )
 			{
 				assert( totaltria < maxtria - 5 );
-				int numt = mc_process_cell_hi
+				const int numt = mc_process_cell_hi
 				(
 					fielddensity, 
 					fieldtype,
