@@ -19,7 +19,7 @@ TTOBJS=\
 	$(TTPREFIX)/threadtracer.o
 
 
-CFLAGS=-O2 -mavx -mfma -g -MMD -I$(ENOKIPREFIX)/include -I$(TTPREFIX) -DSTANDALONE -D_GNU_SOURCE
+CFLAGS=-O2 -mavx2 -mfma -g -MMD -I$(ENOKIPREFIX)/include -I$(TTPREFIX) -DSTANDALONE -D_GNU_SOURCE -DBLKMAG=7
 CXXFLAGS=$(CFLAGS) -std=c++17
 
 all: osino
