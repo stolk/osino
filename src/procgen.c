@@ -11,6 +11,8 @@
 #include "osino.h"
 #include "surface.h"
 
+#include "threadtracer.h"
+
 static float fielddensity[BLKSIZ];
 static uint8_t fieldtype[BLKSIZ];
 
@@ -69,6 +71,7 @@ int procgen_asteroid(float* fdens, uint8_t* ftype, float* v, float* n, uint8_t* 
 
 int main(int argc, char* argv[])
 {
+	tt_signin(-1,"main");
 	fprintf(stderr, "Enabling floating point exceptions...\n");
 	feenableexcept( FE_DIVBYZERO | FE_INVALID | FE_OVERFLOW );
 	const int numt = procgen_asteroid(fielddensity, fieldtype, surface_v, surface_n, surface_m);
@@ -76,6 +79,7 @@ int main(int argc, char* argv[])
 	const float off = -0.5f * (BLKRES-1);
 	const float offset[3] = { off, off, off };
 	surface_writeobj("output.obj", numt, surface_v, surface_n, offset);
+	tt_report("procgen.json");
 }
 
 #endif
