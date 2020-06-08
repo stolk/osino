@@ -4,8 +4,10 @@
 // tables from Marching Cubes Example Program by Cory Bloyd (corysama@yahoo.com)
 
 #include <inttypes.h>
+#include <immintrin.h>
 
 #include "surface.h"
+#include "threadtracer.h"
 
 #include <assert.h>
 #include <math.h>
@@ -13,6 +15,16 @@
 #include <string.h>
 #include <float.h>	// for FLT_EPSILON
 
+
+#if defined( MSWIN )
+#	define ALIGNEDPRE __declspec(align(32))
+#	define ALIGNEDPST
+#else
+#	define ALIGNEDPRE
+#	define ALIGNEDPST __attribute__ ((aligned (32)))
+#endif
+
+#define USESIMD	1
 
 
 // Vertex offsets for cube corners.
@@ -26,20 +38,6 @@ static float vertex_offsets[ 8 ][ 3 ] =
 	{ 1,0,1 },
 	{ 1,1,1 },
 	{ 0,1,1 },
-};
-
-
-// Index offsets for cube corners.
-static const int vertex_index_offset[ 8 ] =
-{
-	0,				// xyz
-	BLKRES*BLKRES,			// Xyz
-	BLKRES*BLKRES + BLKRES,		// XYz
-	BLKRES,				// xYz
-	1,				// xyZ
-	BLKRES*BLKRES + 1,		// XyZ
-	BLKRES*BLKRES + BLKRES + 1,	// XYZ
-	BLKRES + 1,			// xYZ
 };
 
 
@@ -368,10 +366,302 @@ static __inline float get_offset( float fValue1, float fValue2, float fValueDesi
 	return ( o < lo ) ? lo : ( o > hi ? hi : o );
 }
 
+#if USESIMD
+#	define MAXPERCASE	380000
+typedef int caselist_t[MAXPERCASE];
 
+static inline int mc_process_column
+(
+	float isoval,
+	const float* fielddensity,
+	int cx, int cy,
+	caselist_t* caselists,
+	int* listsizes
+)
+{
+	const __m256i x8 = _mm256_set1_epi32(cx);
+	const __m256i y8 = _mm256_set1_epi32(cy);
+	const __m256i z8 = _mm256_setr_epi32(0,1,2,3,4,5,6,7);
+	const __m256i stridex = _mm256_set1_epi32(BLKRES*BLKRES);
+	const __m256i stridey = _mm256_set1_epi32(BLKRES);
+	const __m256i stridez = _mm256_set1_epi32(1);
+
+	__m256i i0 =
+		_mm256_add_epi32(
+			_mm256_add_epi32(
+				_mm256_mullo_epi32(x8, stridex),
+				_mm256_mullo_epi32(y8, stridey)
+			),
+			z8
+		);
+	__m256 i1 = _mm256_add_epi32( i0, stridex );
+	__m256 i2 = _mm256_add_epi32( i1, stridey );
+	__m256 i3 = _mm256_add_epi32( i0, stridey );
+
+	__m256 i4 = _mm256_add_epi32( i0, stridez );
+	__m256 i5 = _mm256_add_epi32( i1, stridez );
+	__m256 i6 = _mm256_add_epi32( i2, stridez );
+	__m256 i7 = _mm256_add_epi32( i3, stridez );
+
+	ALIGNEDPRE int cases[BLKRES] ALIGNEDPST;
+
+	const __m256 iso8 = _mm256_set1_ps(isoval);
+	for (int z=0; z<BLKRES; z+=8)
+	{
+		// Get corner values.
+		const __m256 corval[8] = 
+		{
+			_mm256_i32gather_ps( fielddensity, i0, 4 ),
+			_mm256_i32gather_ps( fielddensity, i1, 4 ),
+			_mm256_i32gather_ps( fielddensity, i2, 4 ),
+			_mm256_i32gather_ps( fielddensity, i3, 4 ),
+			_mm256_i32gather_ps( fielddensity, i4, 4 ),
+			_mm256_i32gather_ps( fielddensity, i5, 4 ),
+			_mm256_i32gather_ps( fielddensity, i6, 4 ),
+			_mm256_i32gather_ps( fielddensity, i7, 4 )
+		};
+#if 0
+		ALIGNEDPRE int iv[8] ALIGNEDPST;
+		_mm256_store_si256(iv, i0); for (int j=0; j<8; ++j) { assert(iv[j]>=0); assert(iv[j]<BLKSIZ); }
+#endif
+		__m256 msk8 = _mm256_set1_epi32(1);
+		__m256i bit0 = _mm256_and_si256(_mm256_cmp_ps(corval[0], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
+		__m256i bit1 = _mm256_and_si256(_mm256_cmp_ps(corval[1], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
+		__m256i bit2 = _mm256_and_si256(_mm256_cmp_ps(corval[2], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
+		__m256i bit3 = _mm256_and_si256(_mm256_cmp_ps(corval[3], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
+		__m256i bit4 = _mm256_and_si256(_mm256_cmp_ps(corval[4], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
+		__m256i bit5 = _mm256_and_si256(_mm256_cmp_ps(corval[5], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
+		__m256i bit6 = _mm256_and_si256(_mm256_cmp_ps(corval[6], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
+		__m256i bit7 = _mm256_and_si256(_mm256_cmp_ps(corval[7], iso8, _CMP_LE_OS), msk8); msk8 = _mm256_slli_epi32(msk8, 1);
+		__m256i caseidx8 =
+			_mm256_add_epi32(
+				_mm256_add_epi32(
+	 				_mm256_add_epi32(bit0,bit1),
+	 				_mm256_add_epi32(bit2,bit3)
+				),
+				_mm256_add_epi32(
+	 				_mm256_add_epi32(bit4,bit5),
+	 				_mm256_add_epi32(bit6,bit7)
+				)
+			);
+		// Store results.
+		_mm256_store_si256((__m256i*)(cases+z), caseidx8);
+
+		// advance to next 8.
+		const __m256 step = _mm256_set1_epi32(8);
+		i0 = _mm256_add_epi32(i0, step);
+		i1 = _mm256_add_epi32(i1, step);
+		i2 = _mm256_add_epi32(i2, step);
+		i3 = _mm256_add_epi32(i3, step);
+		i4 = _mm256_add_epi32(i4, step);
+		i5 = _mm256_add_epi32(i5, step);
+		i6 = _mm256_add_epi32(i6, step);
+		i7 = _mm256_add_epi32(i7, step);
+	}
+
+	int cnt=0;
+	const int encoded = ( cx << 16 ) | (cy << 8 );
+	for (int i=1; i<BLKRES-1; ++i)
+	{
+		int ca = cases[i];
+		if (ca!=0 && ca!=0xff)
+		{
+			if (listsizes[ca] >= MAXPERCASE)
+				fprintf(stderr,"Case %x exceeds num instances: %d\n", ca, listsizes[ca]);
+			assert(listsizes[ca]<MAXPERCASE);
+			caselists[ ca ][ listsizes[ca]++ ] = (encoded | i);
+			cnt++;
+		}
+	}
+
+	return cnt;
+}
+
+
+static inline int mc_process_case_instances
+(
+	int caseidx,
+	int numcases,
+	int* cases,
+ 	const float* __restrict__ fielddensity,
+	const uint8_t* __restrict__ fieldtype,
+	float isoval,
+ 	float* __restrict__ outputv,	// vertices
+ 	float* __restrict__ outputn,	// normals
+	uint8_t* __restrict__ outputm	// materials
+)
+{
+	int num_trias_generated = 0;
+	float* writerv = outputv;
+	float* writern = outputn;
+	uint8_t* writerm = outputm;
+
+	for (int inst=0; inst<numcases; ++inst)
+	{
+		const int ca = cases[inst];
+		const int z = (ca    ) & 0xff;
+		const int y = (ca>> 8) & 0xff;
+		const int x = (ca>>16) & 0xff;
+
+		const int stridex = BLKRES*BLKRES;
+		const int stridey = BLKRES;
+		const int stridez = 1;
+
+		// retrieve the 8 corner values for this cell.
+		const int baseidx = x * stridex + y * stridey + z;
+		const int corner_idx[ 8 ] = 
+		{
+			baseidx+0,			// xyz
+			baseidx+stridex,		// Xyz
+			baseidx+stridex+stridey,	// XYz
+			baseidx+stridey,		// xYz
+			baseidx+stridez,		// xyZ
+			baseidx+stridex+stridez,	// XyZ
+			baseidx+stridex+stridey+stridez,// XYZ
+			baseidx+stridey+stridez		// xYZ
+		};
+
+		const float corner_values[ 8 ] =
+		{
+			fielddensity[ baseidx+0 ],			// xyz
+			fielddensity[ baseidx+BLKRES*BLKRES ],		// Xyz
+			fielddensity[ baseidx+BLKRES*BLKRES+BLKRES ],	// XYz
+			fielddensity[ baseidx+BLKRES ],			// xYz
+			fielddensity[ baseidx+1 ],			// xyZ
+			fielddensity[ baseidx+BLKRES*BLKRES+1 ],	// XyZ
+			fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ],	// XYZ
+			fielddensity[ baseidx+BLKRES+1 ]		// xYZ
+		};
+
+		const int edgeflags = edge_flags[ caseidx ];
+
+		// Determine the corner normals
+		float corner_normals[ 8 ][ 3 ];
+		for ( int i=0; i<8; ++i )
+		{
+			const int i0 = corner_idx[ i ];
+
+			const int iprvx = i0 - stridex;
+			const int inxtx = i0 + stridex;
+			float dx = fielddensity[ inxtx ] - fielddensity[ iprvx ];
+
+			const int iprvy = i0 - stridey;
+			const int inxty = i0 + stridey;
+			float dy = fielddensity[ inxty ] - fielddensity[ iprvy ];
+
+			const int iprvz = i0 - stridez;
+			const int inxtz = i0 + stridez;
+			float dz = fielddensity[ inxtz ] - fielddensity[ iprvz ];
+
+#if 0
+			const float th = 1.5f;
+			dx = dx >  th ?  th : dx;
+			dx = dx < -th ? -th : dx;
+			dy = dy >  th ?  th : dy;
+			dy = dy < -th ? -th : dy;
+			dz = dz >  th ?  th : dz;
+			dz = dz < -th ? -th : dz;
+#endif
+
+			const float lensq = dx*dx + dy*dy + dz*dz;
+			const float invlen = lensq > FLT_EPSILON ? 1.0f / sqrtf(lensq) : 1.0f;
+			corner_normals[ i ][ 0 ] = -dx * invlen;
+			corner_normals[ i ][ 1 ] = -dy * invlen;
+			corner_normals[ i ][ 2 ] = -dz * invlen;
+		}
+	
+		// Determine the corner materials
+		float corner_materials[ 8 ];
+		for ( int i=0; i<8; ++i )
+			corner_materials[ i ] = fieldtype[ corner_idx[ i ] ];
+
+		// Determine the vertices.
+		float edge_verts[ 12 ][ 3 ];
+		float edge_norms[ 12 ][ 3 ];
+		uint8_t edge_mtrls[ 12 ];
+		for ( int edge=0; edge<12; ++edge )
+		{
+			if ( edgeflags & ( 1 << edge ) )
+			{
+				const int i0 = edge_connections[ edge ][ 0 ];
+				const int i1 = edge_connections[ edge ][ 1 ];
+				//printf( "edge from %d(%f) to %d(%f)\n", i0, corner_values[ i0 ], i1, corner_values[ i1 ] );
+				const float offs = get_offset( corner_values[ i0 ], corner_values[ i1 ], isoval );
+				edge_verts[ edge ][ 0 ] = x + vertex_offsets[ i0 ][ 0 ] + offs * edge_directions[ edge ][ 0 ];
+				edge_verts[ edge ][ 1 ] = y + vertex_offsets[ i0 ][ 1 ] + offs * edge_directions[ edge ][ 1 ];
+				edge_verts[ edge ][ 2 ] = z + vertex_offsets[ i0 ][ 2 ] + offs * edge_directions[ edge ][ 2 ];
+				const float t0 = 1.0f - offs;
+				const float t1 = offs;
+				const float nx = t0 * corner_normals[ i0 ][ 0 ] + t1 * corner_normals[ i1 ][ 0 ];
+				const float ny = t0 * corner_normals[ i0 ][ 1 ] + t1 * corner_normals[ i1 ][ 1 ];
+				const float nz = t0 * corner_normals[ i0 ][ 2 ] + t1 * corner_normals[ i1 ][ 2 ];
+				const float lengthsq  = nx*nx + ny*ny + nz*nz;
+				const float invlen = lengthsq > 0.0f ? 1.0f/sqrtf(lengthsq) : 1;
+				edge_norms[ edge ][ 0 ] = nx * invlen;
+				edge_norms[ edge ][ 1 ] = ny * invlen;
+				edge_norms[ edge ][ 2 ] = nz * invlen;
+				edge_mtrls[ edge ] = corner_materials[ 0 ];
+			}
+		}
+
+		// Determine the triangles (up to five per cube).
+		for ( int tria=0; tria<5; ++tria )
+		{
+			if ( triangle_connection_table[ caseidx ][ 3*tria ] < 0 )
+				break;
+			for ( int corner=0; corner<3; ++corner )
+			{
+				int vert = triangle_connection_table[ caseidx ][ 3*tria+corner ];
+				const float* v = edge_verts[ vert ];
+				const float* n = edge_norms[ vert ];
+				const float  m = edge_mtrls[ vert ];
+				memcpy( writerv, v, 3*sizeof(float) );
+				memcpy( writern, n, 3*sizeof(float) );
+				*writerm = m;
+				writerv += 3;
+				writern += 3;
+				writerm += 1;
+			}
+#if 0
+			// Remove degenerate triangles.
+			const float* v = writerv - 9;
+			const int coll01 = v[0]==v[3] && v[1]==v[4] && v[2]==v[5];
+			const int coll02 = v[0]==v[6] && v[1]==v[7] && v[2]==v[8];
+			const int coll12 = v[3]==v[6] && v[4]==v[7] && v[5]==v[8];
+			if ( coll01 || coll02 || coll12 )
+			{
+				fprintf( stderr, "Vert collision for caseidx %d\n", caseidx );
+				fprintf( stderr, "cornervalues %f %f %f %f %f %f %f %f\n",
+					corner_values[0],
+					corner_values[1],
+					corner_values[2],
+					corner_values[3],
+					corner_values[4],
+					corner_values[5],
+					corner_values[6],
+					corner_values[7]
+				);
+				writerv -= 9;
+				writern -= 9;
+				writerm -= 3;
+			}
+			else
+				num_trias_generated++;
+#else
+			num_trias_generated++;
+#endif
+		}
+	}
+	//fprintf(stderr,"case %x: %d trias.\n", caseidx, num_trias_generated);
+	return num_trias_generated;
+}
+#endif
+
+
+#if !USESIMD
 // Process a single cell with coordinates x,y,z and return the nr of triangles written in outputv/outputn.
 // outputv and outputn should accomodate a maximum of five triangles, or 45 floats each.
-static int mc_process_cell_hi
+static inline int mc_process_cell_hi
 (
  	const float* __restrict__ fielddensity,
 	const uint8_t* __restrict__ fieldtype,
@@ -386,15 +676,32 @@ static int mc_process_cell_hi
 	const int stridex = BLKRES*BLKRES;
 	const int stridey = BLKRES;
 	const int stridez = 1;
-	
+
 	// retrieve the 8 corner values for this cell.
-	const int idx0 = x * stridex + y * stridey + z;
-	int corner_idx[ 8 ];
-	for ( int i=0; i<8; ++i )
-		corner_idx[ i ] = idx0 + vertex_index_offset[ i ];
-	float corner_values[ 8 ];
-	for ( int i=0; i<8; ++i )
-		corner_values[ i ] = fielddensity[ corner_idx[ i ] ];
+	const int baseidx = x * stridex + y * stridey + z;
+	const int corner_idx[ 8 ] = 
+	{
+		baseidx+0,			// xyz
+		baseidx+stridex,		// Xyz
+		baseidx+stridex+stridey,	// XYz
+		baseidx+stridey,		// xYz
+		baseidx+stridez,		// xyZ
+		baseidx+stridex+stridez,	// XyZ
+		baseidx+stridex+stridey+stridez,// XYZ
+		baseidx+stridey+stridez		// xYZ
+	};
+
+	const float corner_values[ 8 ] =
+	{
+		fielddensity[ baseidx+0 ],			// xyz
+		fielddensity[ baseidx+BLKRES*BLKRES ],		// Xyz
+		fielddensity[ baseidx+BLKRES*BLKRES+BLKRES ],	// XYz
+		fielddensity[ baseidx+BLKRES ],			// xYz
+		fielddensity[ baseidx+1 ],			// xyZ
+		fielddensity[ baseidx+BLKRES*BLKRES+1 ],	// XyZ
+		fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ],	// XYZ
+		fielddensity[ baseidx+BLKRES+1 ]		// xYZ
+	};
 
 	// do in-out test for each value, to determine the case index for this cell.
 	int caseidx = 0;
@@ -435,12 +742,8 @@ static int mc_process_cell_hi
 		dz = dz < -th ? -th : dz;
 #endif
 
-		float length = sqrtf( dx*dx + dy*dy + dz*dz );
-		if ( length < FLT_EPSILON )
-			length=1.0f;
-		assert (length > 0.0f );
-		float invlen = 1.0f / length;
-		//invlen = 1.0f;
+		const float lensq = dx*dx + dy*dy + dz*dz;
+		const float invlen = lensq > FLT_EPSILON ? 1.0f / sqrtf(lensq) : 1.0f;
 		corner_normals[ i ][ 0 ] = -dx * invlen;
 		corner_normals[ i ][ 1 ] = -dy * invlen;
 		corner_normals[ i ][ 2 ] = -dz * invlen;
@@ -529,8 +832,75 @@ static int mc_process_cell_hi
 	}
 	return num_trias_generated;
 }
+#endif
 
 
+#if USESIMD
+static caselist_t caselists[256];
+static int listsizes[256];
+// Marching cubes for an entire block.
+int surface_extract
+(
+	const float* __restrict__ fielddensity,
+	const uint8_t* __restrict__ fieldtype,
+ 	float isoval,
+ 	float* __restrict__ outputv,
+ 	float* __restrict__ outputn,
+ 	uint8_t* __restrict__ outputm,
+ 	int maxtria
+)
+{
+	TT_BEGIN("classify");
+	memset(listsizes, 0, sizeof(listsizes));
+	int cnt=0;
+	const int lo=1;
+	const int hi=BLKRES-1;
+	for (int x=lo; x<hi; ++x)
+		for (int y=lo; y<hi; ++y)
+		{
+			const int nonempty = mc_process_column(isoval, fielddensity, x,y, caselists, listsizes);
+			//fprintf(stderr,"x,y: %d,%d -> %d\n", x,y, nonempty);
+			cnt += nonempty;
+		}
+	TT_END("classify");
+	fprintf(stderr, "%d out of %d cells have geometry.\n", cnt, BLKSIZ);
+
+	// Now we have all voxels, sorted by case.
+	// We need to generate geometry for them.
+
+	float* __restrict__ v = outputv;
+	float* __restrict__ n = outputn;
+	uint8_t* __restrict__ m = outputm;
+	int totaltria = 0;
+
+	TT_BEGIN("generate");
+	// For each of the cases...
+	for (int ca=1; ca<0xff; ca++)
+	{
+		int numt = mc_process_case_instances
+		(
+			ca,
+			listsizes[ca],
+			caselists[ca],
+ 			fielddensity,
+			fieldtype,
+			isoval,
+ 			v,	// vertices
+ 			n,	// normals
+			m	// materials
+		);
+		v += numt * 3 * 3;
+		n += numt * 3 * 3;
+		m += numt * 3;
+		totaltria += numt;
+		assert(totaltria < maxtria);
+	}
+	TT_END("generate");
+	return totaltria;
+}
+#endif
+
+#if !USESIMD
 // Marching cubes for an entire block.
 int surface_extract
 (
@@ -574,6 +944,7 @@ int surface_extract
 	}
 	return totaltria;
 }
+#endif
 
 
 
