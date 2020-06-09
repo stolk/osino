@@ -255,45 +255,54 @@ extern "C" {
 
 static FV* field=0;
 
-void osino_computefield(void)
+void osino_computefield(const int gridoff[3], int fullgridsz)
 {
 	if (!field) field = new FV;
 	const int mag = BLKMAG;
 	const int sz = (1<<mag);
 	const int msk = sz-1;
 	const int cnt = sz * sz * sz;
-	const float lo = 0.5f * (sz-1);
 	const IV ix = enoki::arange<IV>( cnt );
 	const IV zc = ix & msk;
 	const IV yc = enoki::sr<mag>(ix) & msk;
 	const IV xc = enoki::sr<mag+mag>(ix) & msk;
-	const float s0 = 1.000f / lo;
-	const float s1 = 1.003f / lo;
-	const float s2 = 1.005f / lo;
-	FV x = ( FV(xc) - lo ) * s0;
-	FV y = ( FV(yc) - lo ) * s1;
-	FV z = ( FV(zc) - lo ) * s2;
+	const float s0 = 2.000f / (fullgridsz);
+	const float s1 = 2.003f / (fullgridsz);
+	const float s2 = 2.005f / (fullgridsz);
+	FV x = ( FV(xc+gridoff[0]) - fullgridsz/2 ) * s0;
+	FV y = ( FV(yc+gridoff[1]) - fullgridsz/2 ) * s1;
+	FV z = ( FV(zc+gridoff[2]) - fullgridsz/2 ) * s2;
 
+#if 0
 	const FV lsq_unwarped = x*x + y*y + z*z; // 0 .. 0.25
 	const FV depth = 0.25f - lsq_unwarped;
-	const FV warpstrength = 0.39f + enoki::max(0, depth) * 8.2f;
-
+	const FV warpstrength = 0.29f + enoki::max(0, depth) * 6.6f;
 	const FV wx = osino_3d(11+y, 23-z, 17+x) * warpstrength;
 	const FV wy = osino_3d(19-z, 13+x, 11-y) * warpstrength;
 	const FV wz = osino_3d(31+x, 41-z, 61+y) * warpstrength;
-
 	x += wx;
 	y += wy;
 	z += wz;
+#endif
 
-	const FV lsq = x*x + y*y + z*z;
+	const FV lsq = x*x + y*y + z*z;	// 0 .. 0.25
 	const FV len = enoki::sqrt(lsq);
 	const FV d = 2.0f - 4.0f * len;
+
 	const FV v = osino_3d_4o(1.2f*x,1.2f*y,1.2f*z);
+	//const FV v = osino_3d(x,y,z);
+
 	*field = enoki::clamp(v + d, -1, 1);
+	//*field = v;
+
 	TT_BEGIN("cuda_eval");
 	enoki::cuda_eval(); // may return before the GPU finished executing the kernel.
 	TT_END  ("cuda_eval");
+
+	
+	TT_BEGIN("cuda_sync");
+	enoki::cuda_sync();
+	TT_END  ("cuda_sync");
 }
 
 
@@ -316,7 +325,9 @@ void osino_collectfield(float* __restrict volume)
 
 void osino_mkfield(float* __restrict volume)
 {
-	osino_computefield();
+	const int off[3] = {0,0,0};
+	const int fullgridsz = (1<<BLKMAG);
+	osino_computefield(off, fullgridsz);
 	osino_collectfield(volume);
 }
 

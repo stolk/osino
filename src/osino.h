@@ -15,7 +15,7 @@
 extern "C" {
 #endif
 
-extern void osino_computefield(void);
+extern void osino_computefield(const int gridoff[3], int fullgridsz);
 extern void osino_collectfield(float* volume);
 extern void osino_mkfield(float* volume);
 
