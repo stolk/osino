@@ -455,7 +455,7 @@ static inline int mc_process_column
 
 	int cnt=0;
 	const int encoded = ( cx << 16 ) | (cy << 8 );
-	for (int i=1; i<BLKRES-1; ++i)
+	for (int i=1; i<BLKRES-2; ++i)
 	{
 		int ca = cases[i];
 		if (ca!=0 && ca!=0xff)
@@ -859,7 +859,6 @@ int surface_extract
 		for (int y=ylo; y<yhi; ++y)
 		{
 			const int nonempty = mc_process_column(isoval, fielddensity, x,y, caselists[threadnr], listsizes[threadnr]);
-			//fprintf(stderr,"x,y: %d,%d -> %d\n", x,y, nonempty);
 			cnt += nonempty;
 		}
 	TT_END("classify");
@@ -924,7 +923,7 @@ int surface_extract
 	uint8_t* __restrict__ m = outputm;
 	int totaltria = 0;
 	const int zlo=1;
-	const int zhi=BLKRES-1;
+	const int zhi=BLKRES-2;
 	int nonempty = 0;
 	for (  int x=xlo; x<xhi; ++x )
 	{
