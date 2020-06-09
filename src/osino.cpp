@@ -266,17 +266,18 @@ void osino_computefield(const int gridoff[3], int fullgridsz)
 	const IV zc = ix & msk;
 	const IV yc = enoki::sr<mag>(ix) & msk;
 	const IV xc = enoki::sr<mag+mag>(ix) & msk;
-	const float s0 = 2.000f / (fullgridsz);
-	const float s1 = 2.003f / (fullgridsz);
-	const float s2 = 2.005f / (fullgridsz);
+	const float s0 = 2.017f / (fullgridsz);
+	const float s1 = 2.053f / (fullgridsz);
+	const float s2 = 2.099f / (fullgridsz);
 	FV x = ( FV(xc+gridoff[0]) - fullgridsz/2 ) * s0;
 	FV y = ( FV(yc+gridoff[1]) - fullgridsz/2 ) * s1;
 	FV z = ( FV(zc+gridoff[2]) - fullgridsz/2 ) * s2;
 
-#if 0
-	const FV lsq_unwarped = x*x + y*y + z*z; // 0 .. 0.25
-	const FV depth = 0.25f - lsq_unwarped;
-	const FV warpstrength = 0.29f + enoki::max(0, depth) * 6.6f;
+#if 1
+	//const FV lsq_unwarped = x*x + y*y + z*z; // 0 .. 0.25
+	//const FV depth = 0.25f - lsq_unwarped;
+	//const FV warpstrength = 0.29f + enoki::max(0, depth) * 6.6f;
+	const FV warpstrength = 0.44f;
 	const FV wx = osino_3d(11+y, 23-z, 17+x) * warpstrength;
 	const FV wy = osino_3d(19-z, 13+x, 11-y) * warpstrength;
 	const FV wz = osino_3d(31+x, 41-z, 61+y) * warpstrength;
