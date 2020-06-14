@@ -108,7 +108,7 @@ void osino_client_init(void)
 }
 
 
-int osino_client_computefield(int gridoff[3], int fullgridsz)
+int osino_client_computefield(int gridoff[3], int fullgridsz, float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
 {
 	static int callcount=0;
 	const int slot = callcount++ % NUMSTREAMS;
@@ -120,6 +120,13 @@ int osino_client_computefield(int gridoff[3], int fullgridsz)
 		gridoff+1,
 		gridoff+2,
 		&fullgridsz,
+		offsets+0,
+		offsets+1,
+		offsets+2,
+		&domainwarp,
+		&freq,
+		&lacunarity,
+		&persistence,
 		0
 	};
 	const CUresult launchResult = cuLaunchKernel

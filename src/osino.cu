@@ -263,7 +263,19 @@ float osino_3d_4o( float x, float y, float z )
 extern "C"
 {
 __global__
-void osino_computefield(float* field, int gridoff_x, int gridoff_y, int gridoff_z, int fullgridsz)
+void osino_computefield
+(
+	float* field,
+	int gridoff_x, int gridoff_y, int gridoff_z,
+	int fullgridsz,
+	float offset_x,
+	float offset_y,
+	float offset_z,
+	float domainwarp,
+	float freq,
+	float lacunarity,
+	float persistence
+)
 {
 	const int zc = threadIdx.x;
 	const int yc = blockIdx.x & 0xff;
@@ -278,11 +290,11 @@ void osino_computefield(float* field, int gridoff_x, int gridoff_y, int gridoff_
 	float z = ( (zc+gridoff_z) - 0.5f*fullgridsz ) * s2;
 #if 1
 	const float lsq_unwarped = x*x + y*y + z*z; // 0 .. 0.25
-	const float depth = 0.25f - lsq_unwarped;
-	const float warpstrength = 0.05f + ( depth < 0 ? 0 : depth ) * 3.6f;
-	const float wx = osino_3d(11+y, 23-z, 17+x) * warpstrength;
-	const float wy = osino_3d(19-z, 13+x, 11-y) * warpstrength;
-	const float wz = osino_3d(31+x, 41-z, 61+y) * warpstrength;
+	const float depth = 0.015f - lsq_unwarped;
+	const float warpstrength = domainwarp * (0.2 + ( depth < 0 ? 0 : depth ) * 0.8f);
+	const float wx = osino_3d(offset_x+11+y, offset_y+23-z, offset_z+17+x) * warpstrength;
+	const float wy = osino_3d(offset_x+19-z, offset_y+13+x, offset_z+11-y) * warpstrength;
+	const float wz = osino_3d(offset_x+31+x, offset_y+41-z, offset_z+61+y) * warpstrength;
 	x += wx;
 	y += wy;
 	z += wz;
@@ -291,8 +303,7 @@ void osino_computefield(float* field, int gridoff_x, int gridoff_y, int gridoff_
 	const float len = sqrtf(lsq);
 	const float d = 2.0f - 4.0f * len;
 
-	const float v = osino_3d_4o(3.2f*x,3.2f*y,3.2f*z);
-	//const float v = osino_3d(x,y,z);
+	const float v = osino_3d_4o(offset_x+freq*x,offset_y+freq*y,offset_z+freq*z);
 
 	const int idx = (xc * (256*256)) + (yc*256) + zc;
 	field[ idx ] = v + d;
@@ -376,15 +387,7 @@ int main(int argc, char* argv[])
 
 	CHECK_CUDA
 
-#if 1
-	osino_computefield<<<BLKRES*BLKRES,BLKRES>>>(field, 0,0,0, BLKRES);
-
-	// Wait for GPU to finish before accessing on host
-#elif 0
-	osino_test2d<<<BLKRES,BLKRES>>>(field);
-#else
-	osino_test3d<<<BLKRES*BLKRES, BLKRES>>>(field);
-#endif
+	osino_computefield<<<BLKRES*BLKRES,BLKRES>>>(field, 0,0,0, BLKRES, 0,0,0, 1.0f, 1.0f, 0.5f, 0.5f );
 
 	cudaDeviceSynchronize();
 	CHECK_CUDA
