@@ -250,13 +250,23 @@ float osino_2d_4o( float x, float y )
 
 // Do 4 octaves of open simplex noise in 3D.
 __device__
-float osino_3d_4o( float x, float y, float z )
+float osino_3d_4o( float x, float y, float z, float lacunarity, float persistence )
 {
-	const float n0 = osino_3d(  x,   y,   z);
-	const float n1 = osino_3d(2*x, 2*y, 2*z);
-	const float n2 = osino_3d(4*x, 4*y, 4*z);
-	const float n3 = osino_3d(8*x, 8*y, 8*z);
-	return (1/1.875f) * ( n0 + 0.5f * n1 + 0.25f * n2 + 0.125f * n3 );
+	const float a1 = persistence;
+	const float a2 = persistence*a1;
+	const float a3 = persistence*a2;
+	const float scl = 1.0f / (1.0f+a1+a2+a3);
+
+	const float ilac = 1.0f / lacunarity;
+	const float f1 = ilac;
+	const float f2 = f1*f1;
+	const float f3 = f2*f2;
+
+	const float n0 = osino_3d(   x,    y,    z);
+	const float n1 = osino_3d(f1*x, f1*y, f1*z);
+	const float n2 = osino_3d(f2*x, f2*y, f2*z);
+	const float n3 = osino_3d(f3*x, f3*y, f3*z);
+	return scl * ( n0 + a1 * n1 + a2 * n2 + a3 * n3 );
 }
 
 
@@ -291,7 +301,7 @@ void osino_computefield
 #if 1
 	const float lsq_unwarped = x*x + y*y + z*z; // 0 .. 0.25
 	const float depth = 0.015f - lsq_unwarped;
-	const float warpstrength = domainwarp * (0.2 + ( depth < 0 ? 0 : depth ) * 0.8f);
+	const float warpstrength = domainwarp * (0.5 + ( depth < 0 ? 0 : depth ) * 5.0f);
 	const float wx = osino_3d(offset_x+11+y, offset_y+23-z, offset_z+17+x) * warpstrength;
 	const float wy = osino_3d(offset_x+19-z, offset_y+13+x, offset_z+11-y) * warpstrength;
 	const float wz = osino_3d(offset_x+31+x, offset_y+41-z, offset_z+61+y) * warpstrength;
@@ -303,7 +313,7 @@ void osino_computefield
 	const float len = sqrtf(lsq);
 	const float d = 2.0f - 4.0f * len;
 
-	const float v = osino_3d_4o(offset_x+freq*x,offset_y+freq*y,offset_z+freq*z);
+	const float v = osino_3d_4o(offset_x+freq*x,offset_y+freq*y,offset_z+freq*z,lacunarity,persistence);
 
 	const int idx = (xc * (256*256)) + (yc*256) + zc;
 	field[ idx ] = v + d;
