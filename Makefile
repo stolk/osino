@@ -6,12 +6,15 @@ ENOKIPREFIX=externals/enoki
 
 TTPREFIX=externals/ThreadTracer
 
+CUDAPREFIX=/usr/local/cuda
+
 
 # Open Simplex Noise object files.
 OSINOOBJS=\
 	src/osino.o \
 	src/surface.o \
-	src/procgen.o
+	src/procgen.o \
+	src/osino_cuda.o
 
 
 # ThreadTracer object files.
@@ -19,7 +22,7 @@ TTOBJS=\
 	$(TTPREFIX)/threadtracer.o
 
 
-CFLAGS=-O2 -std=c99 -mavx2 -mfma -g -MMD -I$(ENOKIPREFIX)/include -I$(TTPREFIX) -DSTANDALONE -D_GNU_SOURCE -DBLKMAG=7
+CFLAGS=-O2 -std=c99 -mavx2 -mfma -g -MMD -I$(ENOKIPREFIX)/include -I$(TTPREFIX) -I$(CUDAPREFIX)/include -DSTANDALONE -D_GNU_SOURCE -DBLKMAG=7
 CXXFLAGS=$(CFLAGS) -std=c++17
 
 all: osino
