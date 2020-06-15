@@ -300,8 +300,8 @@ void osino_computefield
 	float z = ( (zc+gridoff_z) - 0.5f*fullgridsz ) * s2;
 #if 1
 	const float lsq_unwarped = x*x + y*y + z*z; // 0 .. 0.25
-	const float depth = 0.015f - lsq_unwarped;
-	const float warpstrength = domainwarp * (0.5 + ( depth < 0 ? 0 : depth ) * 5.0f);
+	const float depth = 0.25f - lsq_unwarped;
+	const float warpstrength = domainwarp * (0.5 + ( depth < 0 ? 0 : depth ) * 10.0f);
 	const float wx = osino_3d(offset_x+11+y, offset_y+23-z, offset_z+17+x) * warpstrength;
 	const float wy = osino_3d(offset_x+19-z, offset_y+13+x, offset_z+11-y) * warpstrength;
 	const float wz = osino_3d(offset_x+31+x, offset_y+41-z, offset_z+61+y) * warpstrength;
