@@ -15,14 +15,14 @@
 #define BLKRES 	(1<<BLKMAG)
 #define BLKSIZ	(BLKRES*BLKRES*BLKRES)
 
-static const char* module_fname = "osino.ptx";
-static const char* kernel_name  = "osino_computefield";
-
 static CUdevice device;
 static CUcontext context;
-static CUmodule module;
-static CUfunction function;
 
+static CUmodule module_compute;
+static CUmodule module_classify;
+
+static CUfunction function_compute;
+static CUfunction function_classify;
 
 static CUstream streams[NUMSTREAMS];
 static CUdeviceptr deviceptrs[NUMSTREAMS];
@@ -76,15 +76,38 @@ void osino_client_init(void)
 		fprintf(stderr,"cuModuleLoad error: 0x%x (%s)\n", createContextResult, cudaResultName(createContextResult));
 	assert(createContextResult == CUDA_SUCCESS);
 
-	const CUresult moduleLoadResult = cuModuleLoad(&module, module_fname);
+	CUresult moduleLoadResult;
+	CUresult getFunctionResult;
+
+	// compute
+
+	moduleLoadResult = cuModuleLoad(&module_compute, "computefield.ptx");
 	if (moduleLoadResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuModuleLoad error: 0x%x (%s)\n", moduleLoadResult, cudaResultName(moduleLoadResult));
 	assert(moduleLoadResult == CUDA_SUCCESS);
+	CHECK_CUDA
 
-	const CUresult getFunctionResult = cuModuleGetFunction(&function, module, kernel_name);
+	getFunctionResult = cuModuleGetFunction(&function_compute, module_compute, "osino_computefield");
 	if (getFunctionResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuModulkeGetFunction error: 0x%x (%s)\n", getFunctionResult, cudaResultName(getFunctionResult));
 	assert(getFunctionResult == CUDA_SUCCESS);
+	CHECK_CUDA
+
+	// classify
+
+	moduleLoadResult = cuModuleLoad(&module_classify, "classifyfield.ptx");
+	if (moduleLoadResult != CUDA_SUCCESS)
+		fprintf(stderr,"cuModuleLoad error: 0x%x (%s)\n", moduleLoadResult, cudaResultName(moduleLoadResult));
+	assert(moduleLoadResult == CUDA_SUCCESS);
+	CHECK_CUDA
+
+	getFunctionResult = cuModuleGetFunction(&function_classify, module_classify, "osino_classifyfield");
+	if (getFunctionResult != CUDA_SUCCESS)
+		fprintf(stderr,"cuModulkeGetFunction error: 0x%x (%s)\n", getFunctionResult, cudaResultName(getFunctionResult));
+	assert(getFunctionResult == CUDA_SUCCESS);
+	CHECK_CUDA
+
+	// set up streams
 
 	for (int s=0; s<NUMSTREAMS; ++s)
 	{
@@ -131,7 +154,7 @@ int osino_client_computefield(int gridoff[3], int fullgridsz, float offsets[3], 
 	};
 	const CUresult launchResult = cuLaunchKernel
 	(
-		function,
+		function_compute,
 		BLKRES*BLKRES,1,1,	// grid dim
 		BLKRES,1,1,		// block dim
 		0,			// shared mem bytes
@@ -159,6 +182,8 @@ void osino_client_stagefield(int slot)
 
 	TT_BEGIN(tags[1][slot]);
 	const cudaError_t copyErr = cudaMemcpyAsync(stagingareas[slot], (void*)deviceptrs[slot], BLKSIZ*sizeof(float), cudaMemcpyDeviceToHost, streams[slot]);
+	if (copyErr != cudaSuccess)
+		fprintf(stderr,"cudaMemcpyAsync error: %s\n", cudaGetErrorString(copyErr));
 	assert( copyErr == cudaSuccess );
 	TT_END  (tags[1][slot]);
 }
