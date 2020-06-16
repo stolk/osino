@@ -5,9 +5,11 @@
 
 #include <inttypes.h>
 #include <immintrin.h>
+#include <cuda_fp16.h>
 
 #include "surface.h"
 #include "threadtracer.h"
+#include "prtintrin.h"
 
 #include <assert.h>
 #include <math.h>
@@ -360,6 +362,20 @@ static const int triangle_count_table[256] =
 };
 
 
+// Helper func to gather fp16 values, per
+// https://stackoverflow.com/q/62416595/301166
+__m256 gather_fp16(__fp16 const* fielddensity, __m256i indices)
+{
+	// subtract 2 bytes from base address to load data into high parts:
+	int32_t const* base = (int32_t const*) ( fielddensity - 1);
+	__m256i d = _mm256_i32gather_epi32(base, indices, 2);
+	d = _mm256_and_si256(_mm256_srai_epi32(d, 3), _mm256_set1_epi32(0x8fffe000));
+	__m256 two112 = _mm256_castsi256_ps(_mm256_set1_epi32(0x77800000)); // 2**112
+	__m256 f = _mm256_mul_ps(_mm256_castsi256_ps(d), two112);
+	return f;
+}
+
+
 // Finds the approximate point of intersection of the surface between two points with the values fValue1 and fValue2.
 static __inline float get_offset( float fValue1, float fValue2, float fValueDesired)
 {
@@ -379,7 +395,7 @@ typedef int caselist_t[MAXPERCASE];
 static inline int mc_process_column
 (
 	float isoval,
-	const float* fielddensity,
+	const value_t* fielddensity,
 	int cx, int cy,
 	caselist_t* caselists,
 	int* listsizes
@@ -412,9 +428,60 @@ static inline int mc_process_column
 	ALIGNEDPRE int cases[BLKRES] ALIGNEDPST;
 
 	const __m256 iso8 = _mm256_set1_ps(isoval);
+
 	for (int z=0; z<BLKRES; z+=8)
 	{
 		// Get corner values.
+		const __m256i msk8 = _mm256_set1_epi32(1);
+#if defined(STORECHARS)
+		const __m256 one8 = _mm256_set1_ps(1.0f);
+		const __m256 scl8 = _mm256_set1_ps(1.0f / 128.0f);
+		const __m256 ff8  = _mm256_set1_epi32(0x000000ff);
+		const __m256i g0  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i0,1), ff8);
+		const __m256i g1  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i1,1), ff8);
+		const __m256i g2  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i2,1), ff8);
+		const __m256i g3  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i3,1), ff8);
+		const __m256i g4  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i4,1), ff8);
+		const __m256i g5  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i5,1), ff8);
+		const __m256i g6  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i6,1), ff8);
+		const __m256i g7  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i7,1), ff8);
+		const __m256 v0 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g0),scl8),one8);
+		const __m256 v1 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g1),scl8),one8);
+		const __m256 v2 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g2),scl8),one8);
+		const __m256 v3 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g3),scl8),one8);
+		const __m256 v4 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g4),scl8),one8);
+		const __m256 v5 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g5),scl8),one8);
+		const __m256 v6 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g6),scl8),one8);
+		const __m256 v7 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g7),scl8),one8);
+#elif defined(STORESHORTS)
+		const __m256 ffff8= _mm256_set1_epi32(0x0000ffff);
+		const __m256 scl8 = _mm256_set1_ps(1.0f / 32768.0f);
+		const __m256i g0  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i0,2), ffff8);
+		const __m256i g1  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i1,2), ffff8);
+		const __m256i g2  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i2,2), ffff8);
+		const __m256i g3  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i3,2), ffff8);
+		const __m256i g4  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i4,2), ffff8);
+		const __m256i g5  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i5,2), ffff8);
+		const __m256i g6  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i6,2), ffff8);
+		const __m256i g7  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i7,2), ffff8);
+		const __m256 v0 = _mm256_mul_ps(_mm256_cvtepi32_ps(g0),scl8);
+		const __m256 v1 = _mm256_mul_ps(_mm256_cvtepi32_ps(g1),scl8);
+		const __m256 v2 = _mm256_mul_ps(_mm256_cvtepi32_ps(g2),scl8);
+		const __m256 v3 = _mm256_mul_ps(_mm256_cvtepi32_ps(g3),scl8);
+		const __m256 v4 = _mm256_mul_ps(_mm256_cvtepi32_ps(g4),scl8);
+		const __m256 v5 = _mm256_mul_ps(_mm256_cvtepi32_ps(g5),scl8);
+		const __m256 v6 = _mm256_mul_ps(_mm256_cvtepi32_ps(g6),scl8);
+		const __m256 v7 = _mm256_mul_ps(_mm256_cvtepi32_ps(g7),scl8);
+#elif defined(STOREFP16)
+		const __m256 v0 = gather_fp16(fielddensity, i0);
+		const __m256 v1 = gather_fp16(fielddensity, i1);
+		const __m256 v2 = gather_fp16(fielddensity, i2);
+		const __m256 v3 = gather_fp16(fielddensity, i3);
+		const __m256 v4 = gather_fp16(fielddensity, i4);
+		const __m256 v5 = gather_fp16(fielddensity, i5);
+		const __m256 v6 = gather_fp16(fielddensity, i6);
+		const __m256 v7 = gather_fp16(fielddensity, i7);
+#else
 		const __m256 v0 =_mm256_i32gather_ps( fielddensity, i0, 4 );
 		const __m256 v1 =_mm256_i32gather_ps( fielddensity, i1, 4 );
 		const __m256 v2 =_mm256_i32gather_ps( fielddensity, i2, 4 );
@@ -423,8 +490,7 @@ static inline int mc_process_column
 		const __m256 v5 =_mm256_i32gather_ps( fielddensity, i5, 4 );
 		const __m256 v6 =_mm256_i32gather_ps( fielddensity, i6, 4 );
 		const __m256 v7 =_mm256_i32gather_ps( fielddensity, i7, 4 );
-
-		__m256i msk8 = _mm256_set1_epi32(1);
+#endif
 		__m256i bit0 = _mm256_and_si256(_mm256_cmp_ps(v0, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,0));
 		__m256i bit1 = _mm256_and_si256(_mm256_cmp_ps(v1, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,1));
 		__m256i bit2 = _mm256_and_si256(_mm256_cmp_ps(v2, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,2));
@@ -433,6 +499,7 @@ static inline int mc_process_column
 		__m256i bit5 = _mm256_and_si256(_mm256_cmp_ps(v5, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,5));
 		__m256i bit6 = _mm256_and_si256(_mm256_cmp_ps(v6, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,6));
 		__m256i bit7 = _mm256_and_si256(_mm256_cmp_ps(v7, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,7));
+
 		__m256i caseidx8 =
 			_mm256_add_epi32(
 				_mm256_add_epi32(
@@ -485,7 +552,7 @@ static inline int mc_process_case_instances
 	int caseidx,
 	int numcases,
 	int* cases,
- 	const float* __restrict__ fielddensity,
+ 	const value_t* __restrict__ fielddensity,
 	const uint8_t* __restrict__ fieldtype,
 	float isoval,
  	float* __restrict__ outputv,	// vertices
@@ -523,6 +590,45 @@ static inline int mc_process_case_instances
 			baseidx+stridey+stridez		// xYZ
 		};
 
+#if defined(STORECHARS)
+		const float scl = 1/128.0f;
+		const float corner_values[ 8 ] =
+		{
+			scl*(fielddensity[ baseidx+0                      ]-128.0f),	// xyz
+			scl*(fielddensity[ baseidx+BLKRES*BLKRES          ]-128.0f),	// Xyz
+			scl*(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES   ]-128.0f),	// XYz
+			scl*(fielddensity[ baseidx+BLKRES                 ]-128.0f),	// xYz
+			scl*(fielddensity[ baseidx+1                      ]-128.0f),	// xyZ
+			scl*(fielddensity[ baseidx+BLKRES*BLKRES+1        ]-128.0f),	// XyZ
+			scl*(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ]-128.0f),	// XYZ
+			scl*(fielddensity[ baseidx+BLKRES+1               ]-128.0f),	// xYZ
+		};
+#elif defined(STORESHORTS)
+		const float scl = 1/32768.0f;
+		const float corner_values[ 8 ] =
+		{
+			scl*(fielddensity[ baseidx+0                      ]),	// xyz
+			scl*(fielddensity[ baseidx+BLKRES*BLKRES          ]),	// Xyz
+			scl*(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES   ]),	// XYz
+			scl*(fielddensity[ baseidx+BLKRES                 ]),	// xYz
+			scl*(fielddensity[ baseidx+1                      ]),	// xyZ
+			scl*(fielddensity[ baseidx+BLKRES*BLKRES+1        ]),	// XyZ
+			scl*(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ]),	// XYZ
+			scl*(fielddensity[ baseidx+BLKRES+1               ]),	// xYZ
+		};
+#elif defined(STOREFP16)
+		const float corner_values[ 8 ] =
+		{
+			(fielddensity[ baseidx+0                      ]),	// xyz
+			(fielddensity[ baseidx+BLKRES*BLKRES          ]),	// Xyz
+			(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES   ]),	// XYz
+			(fielddensity[ baseidx+BLKRES                 ]),	// xYz
+			(fielddensity[ baseidx+1                      ]),	// xyZ
+			(fielddensity[ baseidx+BLKRES*BLKRES+1        ]),	// XyZ
+			(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ]),	// XYZ
+			(fielddensity[ baseidx+BLKRES+1               ]),	// xYZ
+		};
+#else
 		const float corner_values[ 8 ] =
 		{
 			fielddensity[ baseidx+0 ],			// xyz
@@ -534,6 +640,7 @@ static inline int mc_process_case_instances
 			fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ],	// XYZ
 			fielddensity[ baseidx+BLKRES+1 ]		// xYZ
 		};
+#endif
 
 		const int edgeflags = edge_flags[ caseidx ];
 
@@ -843,7 +950,7 @@ static int listsizes[4][256];		// NOTE: per thread, because TLS doesn't work!
 // Marching cubes for an entire block.
 int surface_extract
 (
-	const float* __restrict__ fielddensity,
+	const value_t* __restrict__ fielddensity,
 	const uint8_t* __restrict__ fieldtype,
  	float isoval,
 	int xlo,

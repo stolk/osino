@@ -8,6 +8,16 @@
 // Total size of a 3D block.
 #define BLKSIZ		(BLKRES*BLKRES*BLKRES)
 
+#if defined(STOREFP16)
+typedef __fp16 value_t;	// not really a short, but __half is unknown, CPU-side.
+#elif defined(STORECHARS)
+typedef unsigned char value_t;
+#elif defined(STORESHORTS)
+typedef signed short value_t;
+#else
+typedef float value_t;
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -15,7 +25,7 @@ extern "C" {
 // Extract a surface from a 3D field using an iso value.
 extern int surface_extract
 (
-	const float* __restrict__ fielddensity,		// density field.
+	const value_t* __restrict__ fielddensity,	// density field.
 	const uint8_t* __restrict__ fieldtype,		// materials.
 	float isoval,					// iso value that separates volumes.
 	int xlo,					// x-range

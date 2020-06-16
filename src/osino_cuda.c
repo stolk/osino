@@ -15,6 +15,8 @@
 #define BLKRES 	(1<<BLKMAG)
 #define BLKSIZ	(BLKRES*BLKRES*BLKRES)
 
+
+
 static CUdevice device;
 static CUcontext context;
 
@@ -26,13 +28,15 @@ static CUfunction function_classify;
 
 static CUstream streams[NUMSTREAMS];
 static CUdeviceptr deviceptrs[NUMSTREAMS];
-static float* stagingareas[NUMSTREAMS];
+static value_t* stagingareas[NUMSTREAMS];
 
 
 #define CHECK_CUDA \
 	{ \
 		const cudaError_t err = cudaGetLastError(); \
-		fprintf(stderr,"%s\n", cudaGetErrorString(err)); \
+		if (err != cudaSuccess) \
+			fprintf(stderr,"%s\n", cudaGetErrorString(err)); \
+		assert(err == cudaSuccess); \
 	}
 
 
@@ -64,6 +68,8 @@ static void pick_device(void)
 
 void osino_client_init(void)
 {
+	fprintf(stderr,"osino_cuda: value_t has size %lu\n", sizeof(value_t));
+
 	const CUresult initResult = cuInit(0);
 	if (initResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuInit error: 0x%x (%s)\n", initResult, cudaResultName(initResult));
@@ -81,13 +87,24 @@ void osino_client_init(void)
 
 	// compute
 
-	moduleLoadResult = cuModuleLoad(&module_compute, "computefield.ptx");
+#if defined(STOREFP16)
+	const char* ptxname = "computefieldfp16.ptx";
+	const char* funname = "osino_computefield_fp16";
+#elif defined(STORESHORTS)
+	const char* ptxname = "computefieldh.ptx";
+	const char* funname = "osino_computefield_h";
+#else
+	const char* ptxname = "computefield.ptx";
+	const char* funname = "osino_computefield";
+#endif
+
+	moduleLoadResult = cuModuleLoad(&module_compute, ptxname);
 	if (moduleLoadResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuModuleLoad error: 0x%x (%s)\n", moduleLoadResult, cudaResultName(moduleLoadResult));
 	assert(moduleLoadResult == CUDA_SUCCESS);
 	CHECK_CUDA
 
-	getFunctionResult = cuModuleGetFunction(&function_compute, module_compute, "osino_computefield");
+	getFunctionResult = cuModuleGetFunction(&function_compute, module_compute, funname);
 	if (getFunctionResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuModulkeGetFunction error: 0x%x (%s)\n", getFunctionResult, cudaResultName(getFunctionResult));
 	assert(getFunctionResult == CUDA_SUCCESS);
@@ -117,7 +134,7 @@ void osino_client_init(void)
 
 	for (int s=0; s<NUMSTREAMS; ++s)
 	{
-		const CUresult allocResult = cuMemAlloc(deviceptrs+s, BLKSIZ*sizeof(float));
+		const CUresult allocResult = cuMemAlloc(deviceptrs+s, BLKSIZ*sizeof(value_t));
 		if (allocResult != CUDA_SUCCESS)
 			fprintf(stderr,"cuMemAlloc error: 0x%x (%s)\n", allocResult, cudaResultName(allocResult));
 		assert(allocResult == CUDA_SUCCESS);
@@ -125,9 +142,10 @@ void osino_client_init(void)
 
 	for (int s=0; s<NUMSTREAMS; ++s)
 	{
-		const cudaError_t err = cudaMallocHost((void**)(stagingareas+s), BLKSIZ*sizeof(float));
+		const cudaError_t err = cudaMallocHost((void**)(stagingareas+s), BLKSIZ*sizeof(value_t));
 		assert(err == cudaSuccess);
 	}
+	CHECK_CUDA
 }
 
 
@@ -176,12 +194,18 @@ void osino_client_stagefield(int slot)
 		{ "streamsync0", "streamsync1", "streamsync2" },
 		{ "asynccopy0", "asynccopy1", "asynccopy2" },
 	};
+
+	CHECK_CUDA
+	assert(slot>=0 && slot<NUMSTREAMS);
+	assert(deviceptrs[slot]);
+
 	TT_BEGIN(tags[0][slot]);
 	cudaStreamSynchronize(streams[slot]);
 	TT_END  (tags[0][slot]);
+	CHECK_CUDA
 
 	TT_BEGIN(tags[1][slot]);
-	const cudaError_t copyErr = cudaMemcpyAsync(stagingareas[slot], (void*)deviceptrs[slot], BLKSIZ*sizeof(float), cudaMemcpyDeviceToHost, streams[slot]);
+	const cudaError_t copyErr = cudaMemcpyAsync(stagingareas[slot], (void*)deviceptrs[slot], BLKSIZ*sizeof(value_t), cudaMemcpyDeviceToHost, streams[slot]);
 	if (copyErr != cudaSuccess)
 		fprintf(stderr,"cudaMemcpyAsync error: %s\n", cudaGetErrorString(copyErr));
 	assert( copyErr == cudaSuccess );
@@ -189,7 +213,7 @@ void osino_client_stagefield(int slot)
 }
 
 
-void osino_client_collectfield(int slot, float* output)
+void osino_client_collectfield(int slot, value_t* output)
 {
 	const char* tags[2][NUMSTREAMS] =
 	{
@@ -202,7 +226,7 @@ void osino_client_collectfield(int slot, float* output)
 	TT_END  (tags[0][slot]);
 	
 	TT_BEGIN(tags[1][slot]);
-	memcpy(output, stagingareas[slot], BLKSIZ*sizeof(float));
+	memcpy(output, stagingareas[slot], BLKSIZ*sizeof(value_t));
 	TT_END  (tags[1][slot]);
 }
 
