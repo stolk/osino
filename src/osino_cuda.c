@@ -1,3 +1,7 @@
+#include <inttypes.h>
+#include <stdio.h>
+#include <assert.h>
+#include <string.h>
 
 #include "osino_cuda.h"
 
@@ -8,9 +12,6 @@
 
 #include "threadtracer.h"
 
-#include <stdio.h>
-#include <assert.h>
-#include <string.h>
 
 #define BLKRES 	(1<<BLKMAG)
 #define BLKSIZ	(BLKRES*BLKRES*BLKRES)
@@ -27,15 +28,17 @@ static CUfunction function_compute;
 static CUfunction function_classify;
 
 static CUstream streams[NUMSTREAMS];
-static CUdeviceptr deviceptrs[NUMSTREAMS];
-static value_t* stagingareas[NUMSTREAMS];
+static CUdeviceptr fieldptrs[NUMSTREAMS];
+static CUdeviceptr casesptrs[NUMSTREAMS];
+static value_t* stagingareas_f[NUMSTREAMS];
+static uint8_t* stagingareas_c[NUMSTREAMS];
 
 
 #define CHECK_CUDA \
 	{ \
 		const cudaError_t err = cudaGetLastError(); \
 		if (err != cudaSuccess) \
-			fprintf(stderr,"%s\n", cudaGetErrorString(err)); \
+			fprintf(stderr,"%s:%d err %d - %s\n", __FILE__, __LINE__, err, cudaGetErrorString(err)); \
 		assert(err == cudaSuccess); \
 	}
 
@@ -134,17 +137,34 @@ void osino_client_init(void)
 
 	for (int s=0; s<NUMSTREAMS; ++s)
 	{
-		const CUresult allocResult = cuMemAlloc(deviceptrs+s, BLKSIZ*sizeof(value_t));
+		const CUresult allocResult = cuMemAlloc(fieldptrs+s, BLKSIZ*sizeof(value_t));
 		if (allocResult != CUDA_SUCCESS)
 			fprintf(stderr,"cuMemAlloc error: 0x%x (%s)\n", allocResult, cudaResultName(allocResult));
 		assert(allocResult == CUDA_SUCCESS);
+		assert(fieldptrs[s]);
 	}
 
 	for (int s=0; s<NUMSTREAMS; ++s)
 	{
-		const cudaError_t err = cudaMallocHost((void**)(stagingareas+s), BLKSIZ*sizeof(value_t));
+		const CUresult allocResult = cuMemAlloc(casesptrs+s, BLKSIZ*sizeof(uint8_t));
+		if (allocResult != CUDA_SUCCESS)
+			fprintf(stderr,"cuMemAlloc error: 0x%x (%s)\n", allocResult, cudaResultName(allocResult));
+		assert(allocResult == CUDA_SUCCESS);
+		assert(casesptrs[s]);
+	}
+
+	for (int s=0; s<NUMSTREAMS; ++s)
+	{
+		const cudaError_t err = cudaMallocHost((void**)(stagingareas_f+s), BLKSIZ*sizeof(value_t));
 		assert(err == cudaSuccess);
 	}
+
+	for (int s=0; s<NUMSTREAMS; ++s)
+	{
+		const cudaError_t err = cudaMallocHost((void**)(stagingareas_c+s), BLKSIZ*sizeof(uint8_t));
+		assert(err == cudaSuccess);
+	}
+
 	CHECK_CUDA
 }
 
@@ -156,7 +176,7 @@ int osino_client_computefield(int gridoff[3], int fullgridsz, float offsets[3], 
 
 	void* kernelParms[] =
 	{
-		deviceptrs+slot,
+		fieldptrs+slot,
 		gridoff+0,
 		gridoff+1,
 		gridoff+2,
@@ -187,47 +207,114 @@ int osino_client_computefield(int gridoff[3], int fullgridsz, float offsets[3], 
 }
 
 
-void osino_client_stagefield(int slot)
+void osino_client_classifyfield
+(
+	int slot, 
+	float isoval
+)
 {
-	const char* tags[2][NUMSTREAMS] =
+	void* kernelParms[] =
 	{
-		{ "streamsync0", "streamsync1", "streamsync2" },
-		{ "asynccopy0", "asynccopy1", "asynccopy2" },
+		&isoval,
+		fieldptrs+slot,
+		casesptrs+slot,
+		0
+	};
+	CHECK_CUDA
+	const CUresult launchResult = cuLaunchKernel
+	(
+		function_classify,
+		BLKRES*BLKRES,1,1,	// grid dim
+		BLKRES,1,1,		// block dim
+		0,			// shared mem bytes
+		streams[slot],		// hStream
+		kernelParms,
+		0			// extra
+	);
+	if (launchResult != CUDA_SUCCESS)
+		fprintf(stderr,"cuLaunchKernel error: 0x%x (%s)\n", launchResult, cudaResultName(launchResult));
+	assert(launchResult == CUDA_SUCCESS);
+	CHECK_CUDA
+}
+
+
+void osino_client_sync(int slot)
+{
+	const char* tags[NUMSTREAMS] =
+	{
+		"streamsync0", "streamsync1", "streamsync2",
+	};
+	assert(slot>=0 && slot<NUMSTREAMS);
+	TT_BEGIN(tags[slot]);
+	cudaStreamSynchronize(streams[slot]);
+	TT_END  (tags[slot]);
+	CHECK_CUDA
+}
+
+
+void osino_client_stagecases(int slot)
+{
+	const char* tags[NUMSTREAMS] =
+	{
+		"asynccopy0_c", "asynccopy1_c", "asynccopy2_c",
 	};
 
-	CHECK_CUDA
 	assert(slot>=0 && slot<NUMSTREAMS);
-	assert(deviceptrs[slot]);
+	assert(casesptrs[slot]);
 
-	TT_BEGIN(tags[0][slot]);
-	cudaStreamSynchronize(streams[slot]);
-	TT_END  (tags[0][slot]);
-	CHECK_CUDA
-
-	TT_BEGIN(tags[1][slot]);
-	const cudaError_t copyErr = cudaMemcpyAsync(stagingareas[slot], (void*)deviceptrs[slot], BLKSIZ*sizeof(value_t), cudaMemcpyDeviceToHost, streams[slot]);
+	TT_BEGIN(tags[slot]);
+	const cudaError_t copyErr = cudaMemcpyAsync(stagingareas_c[slot], (void*)casesptrs[slot], BLKSIZ*sizeof(uint8_t), cudaMemcpyDeviceToHost, streams[slot]);
 	if (copyErr != cudaSuccess)
 		fprintf(stderr,"cudaMemcpyAsync error: %s\n", cudaGetErrorString(copyErr));
 	assert( copyErr == cudaSuccess );
-	TT_END  (tags[1][slot]);
+	TT_END  (tags[slot]);
+	CHECK_CUDA
+}
+
+
+void osino_client_stagefield(int slot)
+{
+	const char* tags[NUMSTREAMS] =
+	{
+		"asynccopy0_f", "asynccopy1_f", "asynccopy2_f",
+	};
+
+	assert(slot>=0 && slot<NUMSTREAMS);
+	assert(fieldptrs[slot]);
+
+	TT_BEGIN(tags[slot]);
+	const cudaError_t copyErr = cudaMemcpyAsync(stagingareas_f[slot], (void*)fieldptrs[slot], BLKSIZ*sizeof(value_t), cudaMemcpyDeviceToHost, streams[slot]);
+	if (copyErr != cudaSuccess)
+		fprintf(stderr,"cudaMemcpyAsync error: %s\n", cudaGetErrorString(copyErr));
+	assert( copyErr == cudaSuccess );
+	TT_END  (tags[slot]);
+	CHECK_CUDA
 }
 
 
 void osino_client_collectfield(int slot, value_t* output)
 {
-	const char* tags[2][NUMSTREAMS] =
+	const char* tags[NUMSTREAMS] =
 	{
-		{ "streamsync0", "streamsync1", "streamsync2" },
-		{ "memcpy0", "memcpy1", "memcpy2" },
+		"memcpy0_f", "memcpy1_f", "memcpy2_f",
 	};
 
-	TT_BEGIN(tags[0][slot]);
-	cudaStreamSynchronize(streams[slot]);
-	TT_END  (tags[0][slot]);
-	
-	TT_BEGIN(tags[1][slot]);
-	memcpy(output, stagingareas[slot], BLKSIZ*sizeof(value_t));
-	TT_END  (tags[1][slot]);
+	TT_BEGIN(tags[slot]);
+	memcpy(output, stagingareas_f[slot], BLKSIZ*sizeof(value_t));
+	TT_END  (tags[slot]);
+}
+
+
+void osino_client_collectcases(int slot, uint8_t* output)
+{
+	const char* tags[NUMSTREAMS] =
+	{
+		"memcpy0_c", "memcpy1_c", "memcpy2_c",
+	};
+
+	TT_BEGIN(tags[slot]);
+	memcpy(output, stagingareas_c[slot], BLKSIZ*sizeof(uint8_t));
+	TT_END  (tags[slot]);
 }
 
 
