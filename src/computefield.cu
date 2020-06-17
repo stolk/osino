@@ -17,6 +17,12 @@
 #include <stdio.h>
 #include <assert.h>
 
+#include <cuda_fp16.h>
+
+#if defined(STORECHARS)
+#include "bluenoise.h"
+#include "honeycomb.h"
+#endif
 
 
 // Skewing / Unskewing factors for 2, 3, and 4 dimensions.
@@ -27,6 +33,14 @@
 #define F4      0.30901699437494745f    // (Math.sqrt(5.0)-1.0)/4.0;
 #define G4      0.1381966011250105f     // (5.0-Math.sqrt(5.0))/20.0;
 
+
+#if defined(STOREFP16)
+typedef __half value_t;
+#elif defined(STORECHARS)
+typedef unsigned char value_t;
+#else
+typedef float value_t;
+#endif
 
 
 // Hash function that we use to generate random directions.
@@ -275,7 +289,7 @@ extern "C"
 __global__
 void osino_computefield
 (
-	float* field,
+	value_t* field,
 	int gridoff_x, int gridoff_y, int gridoff_z,
 	int fullgridsz,
 	float offset_x,
@@ -316,13 +330,20 @@ void osino_computefield
 	const float v = osino_3d_4o(offset_x+freq*x,offset_y+freq*y,offset_z+freq*z,lacunarity,persistence);
 
 	const int idx = (xc * (256*256)) + (yc*256) + zc;
-	field[ idx ] = v + d;
+	float result = v+d;
+	result = result < -1 ? -1 : result;
+	result = result >  1 ?  1 : result;
+#if defined(STORECHARS)
+	float perturb = bluenoise[ xc&15 ][ yc&15 ][ zc&15 ];
+	//float perturb = honeycomb[ 0 ][ yc % 32 ][ xc % 48 ];
+	field[ idx ] = (value_t) ( 127 + 127 * result + perturb);
+#elif defined(STOREFP16)
+	field[ idx ] = __float2half(result);
+#else
+	field[ idx ] = result;
+#endif
 }
 
-
-void osino_collectfield(float* __restrict volume)
-{
-}
 }
 
 #if 0
@@ -391,8 +412,8 @@ int main(int argc, char* argv[])
 	const int BLKRES = 256;
 	const int N = 256*256*256;
 
-	float* field = 0;
-	cudaMallocManaged(&field, N*sizeof(float));
+	value_t* field = 0;
+	cudaMallocManaged(&field, N*sizeof(value_t));
 	assert(field);
 
 	CHECK_CUDA
@@ -402,14 +423,23 @@ int main(int argc, char* argv[])
 	cudaDeviceSynchronize();
 	CHECK_CUDA
 
-	FILE* f = fopen("out.pgm","wb");
+	const value_t* im = field + (BLKRES/2)*BLKRES*BLKRES;
+	FILE* f = fopen("out_compute.pgm","wb");
 	fprintf(f, "P5\n%d %d\n255\n", BLKRES, BLKRES);
 	for (int i=0; i<256*256; ++i)
-		fputc((int)((0.5f+0.5f*field[i])*255.999), f);
+	{
+#if defined(STOREFP16)
+                const value_t v = im[i];
+                const float fv = __half2float(v);
+                fputc(128 + 127.999f*fv, f);
+#elif defined(STORECHARS)
+		fputc(im[i], f);
+#else
+		fputc(128 + 127.99f * im[i], f);
+#endif
+	}
 	fclose(f);
-
 	cudaFree(field);
-
 	return 0;
 }
 
