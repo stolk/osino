@@ -55,3 +55,12 @@ dkms.conf
 *.json
 
 osino
+
+# cuda stuff
+
+*cudafe1*
+*.ii
+*_dlink.*
+*fatbin*
+*.cubin
+
