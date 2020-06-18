@@ -11,6 +11,7 @@
 #include "osino_avx.h"
 #include "threadtracer.h"
 #include "prtintrin.h"
+#include "hsv.h"
 
 #include <assert.h>
 #include <math.h>
@@ -1256,7 +1257,6 @@ extern int surface_extract_cases
 	assert(total<maxtria);
 
 	TT_BEGIN("mattgen");
-	if (!threadnr) fprintf(stderr,"gridoff %d %d %d\n", gridoff[0], gridoff[1], gridoff[2]);
 	__m256i offx = _mm256_set1_epi32(gridoff[0]);
 	__m256i offy = _mm256_set1_epi32(gridoff[1]);
 	__m256i offz = _mm256_set1_epi32(gridoff[2]);
@@ -1275,15 +1275,30 @@ extern int surface_extract_cases
 			__m256i xc = _mm256_and_si256(_mm256_srli_epi32(encoded8,16), msk8);
 			zc = _mm256_add_epi32(zc, offz);
 			yc = _mm256_add_epi32(yc, offy);
-			xc = _mm256_add_epi32(yc, offx);
-			const __m256 scl8 = _mm256_set1_ps(1.0 / BLKRES);
-			__m256 v = osino_avx_3d
+			xc = _mm256_add_epi32(xc, offx);
+			const __m256 scl8 = _mm256_set1_ps(2.0 / BLKRES);
+			const __m256 sx = _mm256_mul_ps(_mm256_cvtepi32_ps(xc), scl8);
+			const __m256 sy = _mm256_mul_ps(_mm256_cvtepi32_ps(yc), scl8);
+			const __m256 sz = _mm256_mul_ps(_mm256_cvtepi32_ps(zc), scl8);
+			const __m256 wx = osino_avx_3d(sz,sx,sy);
+			const __m256 wy = osino_avx_3d(sy,sx,sz);
+			const __m256 wz = osino_avx_3d(sy,sz,sx);
+#if 0
+			__m256 v = osino_avx_3d(x,y,z);
 			(
-				_mm256_mul_ps(_mm256_cvtepi32_ps(xc), scl8),
-				_mm256_mul_ps(_mm256_cvtepi32_ps(yc), scl8),
-				_mm256_mul_ps(_mm256_cvtepi32_ps(zc), scl8)
-//				0.5f, 0.5f
+				sx,
+				sy,
+				sz
 			);
+#else
+			__m256 v = osino_avx_3d_4o
+			(
+				_mm256_add_ps(sx,wx),
+				_mm256_add_ps(sy,wy),
+				_mm256_add_ps(sz,wz),
+				0.6f, 0.4f
+			);
+#endif
 			ALIGNEDPRE float vals[8] ALIGNEDPST;
 			_mm256_store_ps(vals, v);
 			for (int j=0; j<8; j++)
