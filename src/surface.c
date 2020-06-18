@@ -8,6 +8,7 @@
 #include <cuda_fp16.h>
 
 #include "surface.h"
+#include "osino_avx.h"
 #include "threadtracer.h"
 #include "prtintrin.h"
 
@@ -650,7 +651,7 @@ static inline int mc_process_case_instances
 		// Determine the corner materials
 		float corner_materials[ 8 ];
 		for ( int i=0; i<8; ++i )
-			corner_materials[ i ] = fieldtype[ corner_idx[ i ] ];
+			corner_materials[ i ] = fieldtype[ corner_idx[ 0 ] ];
 
 		// Determine the vertices.
 		float edge_verts[ 12 ][ 3 ];
@@ -863,8 +864,8 @@ static inline int mc_process_cell_hi
 
 
 #if USESIMD
-static caselist_t caselists[4][256];	// NOTE: per thread, because TLS doesn't work!
-static int listsizes[4][256];		// NOTE: per thread, because TLS doesn't work!
+static ALIGNEDPRE caselist_t caselists[4][256] ALIGNEDPST;	// NOTE: per thread, because TLS doesn't work!
+static ALIGNEDPRE int listsizes[4][256] ALIGNEDPST;		// NOTE: per thread, because TLS doesn't work!
 // Marching cubes for an entire block.
 int surface_extract
 (
@@ -1207,8 +1208,10 @@ static inline int mc_process_single_case
 extern int surface_extract_cases
 (
 	const value_t* __restrict__ fielddensity,	// density field.
+	uint8_t* __restrict__ fieldtype,		// material type.
 	const uint8_t* __restrict__ cases,
 	float isoval,					// iso value that separates volumes.
+	const int* __restrict__ gridoff,
 	int xlo,					// x-range
 	int xhi,
 	int ylo,					// y-range
@@ -1224,34 +1227,102 @@ extern int surface_extract_cases
 	float*   n = outputn;
 	uint8_t* m = outputm;
 
-	int totaltria=0;
+	int*        sizes = listsizes[threadnr];
+	caselist_t* lists = caselists[threadnr];
+
+	memset(sizes, 0, 256*sizeof(int));
+
+	TT_BEGIN("sortcases");
 	for (int x=xlo; x<xhi; ++x)
 	{
 		for (int y=ylo; y<yhi; ++y)
 		{
 			int idx = x*BLKRES*BLKRES + y*BLKRES;
+			const int encoded = ( x << 16 ) | (y << 8 );
 			for (int z=0; z<BLKRES; z++)
 			{
 				const uint8_t ca = cases[idx++];
-				if (ca>0 && ca<255)
-				{
-					const int numt = mc_process_single_case
-					(
-						ca,
-						fielddensity,
-						x,y,z,
-						isoval,
-						v,n,m
-					);
-					v += numt * 3 * 3;
-					n += numt * 3 * 3;
-					m += numt * 3;
-					totaltria += numt;
-					assert(totaltria < maxtria);
-				}
+				if (ca>0 && ca<255 && z>=1 && z<BLKRES-2)
+					lists[ ca ][ sizes[ca]++ ] = (encoded | z);
 			}
 		}
 	}
+	TT_END  ("sortcases");
+
+	// See if it fits...
+	int total=0;
+	for (int ca=1; ca<0xff; ca++)
+		total += triangle_count_table[ca] * sizes[ca];
+	assert(total<maxtria);
+
+	TT_BEGIN("mattgen");
+	if (!threadnr) fprintf(stderr,"gridoff %d %d %d\n", gridoff[0], gridoff[1], gridoff[2]);
+	__m256i offx = _mm256_set1_epi32(gridoff[0]);
+	__m256i offy = _mm256_set1_epi32(gridoff[1]);
+	__m256i offz = _mm256_set1_epi32(gridoff[2]);
+	for (int ca=1; ca<255; ++ca)
+	{
+		const int cnt = sizes[ca];
+		const int* instances = lists[ca];
+		if (cnt)
+			assert( instances[cnt-1] > 0 );
+		for (int b=0; b<cnt; b+=8)
+		{
+			__m256i encoded8 = _mm256_load_si256((__m256i*)(instances+b));
+			const __m256i msk8 = _mm256_set1_epi32(0xff);
+			__m256i zc = _mm256_and_si256(encoded8,                       msk8);
+			__m256i yc = _mm256_and_si256(_mm256_srli_epi32(encoded8, 8), msk8);
+			__m256i xc = _mm256_and_si256(_mm256_srli_epi32(encoded8,16), msk8);
+			zc = _mm256_add_epi32(zc, offz);
+			yc = _mm256_add_epi32(yc, offy);
+			xc = _mm256_add_epi32(yc, offx);
+			const __m256 scl8 = _mm256_set1_ps(1.0 / BLKRES);
+			__m256 v = osino_avx_3d
+			(
+				_mm256_mul_ps(_mm256_cvtepi32_ps(xc), scl8),
+				_mm256_mul_ps(_mm256_cvtepi32_ps(yc), scl8),
+				_mm256_mul_ps(_mm256_cvtepi32_ps(zc), scl8)
+//				0.5f, 0.5f
+			);
+			ALIGNEDPRE float vals[8] ALIGNEDPST;
+			_mm256_store_ps(vals, v);
+			for (int j=0; j<8; j++)
+			{
+				const int enc = instances[b+j];
+				const int x = (enc>>16) & 0xff;
+				const int y = (enc>> 8) & 0xff;
+				const int z = (enc    ) & 0xff;
+				fieldtype[ x*BLKRES*BLKRES + y*BLKRES + z ] = (uint8_t) (128 + 120 * vals[j]);
+			}
+		}
+	}
+	TT_END  ("mattgen");
+
+	// Now generate all triangles...
+	TT_BEGIN("generate");
+	int totaltria=0;
+	for (int ca=1; ca<255; ++ca)
+	{
+		const int cnt = sizes[ca];
+		const int numt = mc_process_case_instances
+		(
+			ca,
+			cnt,
+			lists[ca],
+ 			fielddensity,
+			fieldtype,
+			isoval,
+ 			v,	// vertices
+ 			n,	// normals
+			m	// materials
+		);
+		v += numt * 3 * 3;
+		n += numt * 3 * 3;
+		m += numt * 3;
+		totaltria += numt;
+		assert(totaltria < maxtria);
+	}
+	TT_END  ("generate");
 	return totaltria;
 }
 

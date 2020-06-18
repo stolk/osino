@@ -24,8 +24,10 @@ extern "C" {
 extern int surface_extract_cases
 (
 	const value_t* __restrict__ fielddensity,	// density field.
+	uint8_t* __restrict__ fieldtype,		// materials.
 	const uint8_t* __restrict__ cases,
 	float isoval,					// iso value that separates volumes.
+	const int* __restrict__ gridoff,
 	int xlo,					// x-range
 	int xhi,
 	int ylo,					// y-range
