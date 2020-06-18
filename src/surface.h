@@ -9,11 +9,9 @@
 #define BLKSIZ		(BLKRES*BLKRES*BLKRES)
 
 #if defined(STOREFP16)
-typedef __fp16 value_t;	// not really a short, but __half is unknown, CPU-side.
+typedef __fp16 value_t;	// __half is unknown, CPU-side, so we use __fp16
 #elif defined(STORECHARS)
 typedef unsigned char value_t;
-#elif defined(STORESHORTS)
-typedef signed short value_t;
 #else
 typedef float value_t;
 #endif
@@ -21,6 +19,23 @@ typedef float value_t;
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// Extract cases.
+extern int surface_extract_cases
+(
+	const value_t* __restrict__ fielddensity,	// density field.
+	const uint8_t* __restrict__ cases,
+	float isoval,					// iso value that separates volumes.
+	int xlo,					// x-range
+	int xhi,
+	int ylo,					// y-range
+	int yhi,
+	float*  __restrict__ outputv,			// surface verts
+	float*  __restrict__ outputn,			// surface normals
+	uint8_t*  __restrict__ outputm,			// surface materials
+	int maxtria,					// maximum number of triangles.
+	int threadnr					// Use scratch pool 0,1,2 or 3.
+);
 
 // Extract a surface from a 3D field using an iso value.
 extern int surface_extract
