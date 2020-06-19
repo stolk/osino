@@ -66,6 +66,7 @@ extern void surface_writeobj
 	const float* offs	// x,y,z offset to apply to all vertices.
 );
 
+
 #ifdef __cplusplus
 } // extern C
 #endif
