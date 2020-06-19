@@ -6,12 +6,15 @@
 #include <inttypes.h>
 #include <immintrin.h>
 #include <cuda_fp16.h>
+#include <math.h>
 
 #include "surface.h"
 #include "osino_avx.h"
 #include "threadtracer.h"
 #include "prtintrin.h"
 #include "hsv.h"
+#include "clut.h"
+#include "bluenoise.h"
 
 #include <assert.h>
 #include <math.h>
@@ -1307,7 +1310,8 @@ extern int surface_extract_cases
 				const int x = (enc>>16) & 0xff;
 				const int y = (enc>> 8) & 0xff;
 				const int z = (enc    ) & 0xff;
-				fieldtype[ x*BLKRES*BLKRES + y*BLKRES + z ] = (uint8_t) (128 + 120 * vals[j]);
+				const float perturb = bluenoise[(x+gridoff[0])&15][(y+gridoff[1])&15][(z+gridoff[2])&15];
+				fieldtype[ x*BLKRES*BLKRES + y*BLKRES + z ] = (uint8_t) (128 + 120 * vals[j] + perturb);
 			}
 		}
 	}
@@ -1340,4 +1344,5 @@ extern int surface_extract_cases
 	TT_END  ("generate");
 	return totaltria;
 }
+
 
