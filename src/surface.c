@@ -37,11 +37,11 @@
 // Vertex offsets for cube corners.
 static const float vertex_offsets[ 8 ][ 3 ] =
 {
-	{ 0,0,0 },
+	{ 0,0,0 },	// bottom face
 	{ 1,0,0 },
 	{ 1,1,0 },
 	{ 0,1,0 },
-	{ 0,0,1 },
+	{ 0,0,1 },	// top face
 	{ 1,0,1 },
 	{ 1,1,1 },
 	{ 0,1,1 },
@@ -51,17 +51,17 @@ static const float vertex_offsets[ 8 ][ 3 ] =
 // Lists the index of the endpoint vertices for each of the 12 edges of the cube
 static const int edge_connections[ 12 ][ 2 ] = 
 {
-        {0,1}, {1,2}, {2,3}, {3,0},
-        {4,5}, {5,6}, {6,7}, {7,4},
-        {0,4}, {1,5}, {2,6}, {3,7}
+        {0,1}, {1,2}, {2,3}, {3,0},	// bottom face.
+        {4,5}, {5,6}, {6,7}, {7,4},	// top face.
+        {0,4}, {1,5}, {2,6}, {3,7}	// verticals.
 };
 
 // Lists the direction vector (vertex1-vertex0) for each edge in the cube
 static const float edge_directions[ 12 ][ 3 ] =
 {
-        {1.0, 0.0, 0.0},{0.0, 1.0, 0.0},{-1.0, 0.0, 0.0},{0.0, -1.0, 0.0},
-        {1.0, 0.0, 0.0},{0.0, 1.0, 0.0},{-1.0, 0.0, 0.0},{0.0, -1.0, 0.0},
-        {0.0, 0.0, 1.0},{0.0, 0.0, 1.0},{ 0.0, 0.0, 1.0},{0.0,  0.0, 1.0}
+        {1.0, 0.0, 0.0},{0.0, 1.0, 0.0},{-1.0, 0.0, 0.0},{0.0, -1.0, 0.0},	// bottom face.
+        {1.0, 0.0, 0.0},{0.0, 1.0, 0.0},{-1.0, 0.0, 0.0},{0.0, -1.0, 0.0},	// top face.
+        {0.0, 0.0, 1.0},{0.0, 0.0, 1.0},{ 0.0, 0.0, 1.0},{0.0,  0.0, 1.0}	// verticals.
 };
 
 
