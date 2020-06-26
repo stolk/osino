@@ -1,4 +1,4 @@
-
+#include <inttypes.h>
 #include <math.h>
 
 inline float lin2srgb(float val)
@@ -79,5 +79,18 @@ void clut_init(int palnr, int shft)
 
 	for (int i=0; i<14; ++i)
 		clut_add_entry(120+i, stripes[i]);
+}
+
+
+void clut_override(const uint8_t* v)
+{
+	const uint8_t* reader = v;
+	for (int i=0; i<256; ++i)
+	{
+		const uint8_t r = *reader++;
+		const uint8_t g = *reader++;
+		const uint8_t b = *reader++;
+		clut_add_entry(i, (r<<16) + (g<<8) + (b<<0));
+	}
 }
 
