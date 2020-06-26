@@ -24,7 +24,8 @@ static CUcontext context;
 static CUmodule module_compute;
 static CUmodule module_classify;
 
-static CUfunction function_compute;
+static CUfunction function_computefield;
+static CUfunction function_computematter;
 static CUfunction function_classify;
 
 static CUstream streams[NUMSTREAMS];
@@ -90,16 +91,9 @@ void osino_client_init(void)
 
 	// compute
 
-#if defined(STOREFP16)
-	const char* ptxname = "computefieldfp16.ptx";
-	const char* funname = "osino_computefield_fp16";
-#elif defined(STORESHORTS)
-	const char* ptxname = "computefieldh.ptx";
-	const char* funname = "osino_computefield_h";
-#else
 	const char* ptxname = "computefield.ptx";
-	const char* funname = "osino_computefield";
-#endif
+	const char* funname0 = "osino_computefield";
+	const char* funname1 = "osino_computematter";
 
 	moduleLoadResult = cuModuleLoad(&module_compute, ptxname);
 	if (moduleLoadResult != CUDA_SUCCESS)
@@ -107,7 +101,13 @@ void osino_client_init(void)
 	assert(moduleLoadResult == CUDA_SUCCESS);
 	CHECK_CUDA
 
-	getFunctionResult = cuModuleGetFunction(&function_compute, module_compute, funname);
+	getFunctionResult = cuModuleGetFunction(&function_computefield, module_compute, funname0);
+	if (getFunctionResult != CUDA_SUCCESS)
+		fprintf(stderr,"cuModulkeGetFunction error: 0x%x (%s)\n", getFunctionResult, cudaResultName(getFunctionResult));
+	assert(getFunctionResult == CUDA_SUCCESS);
+	CHECK_CUDA
+
+	getFunctionResult = cuModuleGetFunction(&function_computematter, module_compute, funname1);
 	if (getFunctionResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuModulkeGetFunction error: 0x%x (%s)\n", getFunctionResult, cudaResultName(getFunctionResult));
 	assert(getFunctionResult == CUDA_SUCCESS);
@@ -192,7 +192,45 @@ int osino_client_computefield(int gridoff[3], int fullgridsz, float offsets[3], 
 	};
 	const CUresult launchResult = cuLaunchKernel
 	(
-		function_compute,
+		function_computefield,
+		BLKRES*BLKRES,1,1,	// grid dim
+		BLKRES,1,1,		// block dim
+		0,			// shared mem bytes
+		streams[slot],		// hStream
+		kernelParms,
+		0			// extra
+	);
+	if (launchResult != CUDA_SUCCESS)
+		fprintf(stderr,"cuLaunchKernel error: 0x%x (%s)\n", launchResult, cudaResultName(launchResult));
+	assert(launchResult == CUDA_SUCCESS);
+	return slot;
+}
+
+
+int osino_client_computematter(int gridoff[3], int fullgridsz, float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
+{
+	static int callcount=0;
+	const int slot = callcount++ % NUMSTREAMS;
+
+	void* kernelParms[] =
+	{
+		fieldptrs+slot,
+		gridoff+0,
+		gridoff+1,
+		gridoff+2,
+		&fullgridsz,
+		offsets+0,
+		offsets+1,
+		offsets+2,
+		&domainwarp,
+		&freq,
+		&lacunarity,
+		&persistence,
+		0
+	};
+	const CUresult launchResult = cuLaunchKernel
+	(
+		function_computematter,
 		BLKRES*BLKRES,1,1,	// grid dim
 		BLKRES,1,1,		// block dim
 		0,			// shared mem bytes

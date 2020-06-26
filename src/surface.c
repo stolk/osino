@@ -397,140 +397,8 @@ static __inline float get_offset( float fValue1, float fValue2, float fValueDesi
 #	define MAXPERCASE	40000
 typedef int caselist_t[MAXPERCASE];
 
-static inline int mc_process_column
-(
-	float isoval,
-	const value_t* fielddensity,
-	int cx, int cy,
-	caselist_t* caselists,
-	int* listsizes
-)
-{
-	const __m256i x8 = _mm256_set1_epi32(cx);
-	const __m256i y8 = _mm256_set1_epi32(cy);
-	const __m256i z8 = _mm256_setr_epi32(0,1,2,3,4,5,6,7);
-	const __m256i stridex = _mm256_set1_epi32(BLKRES*BLKRES);
-	const __m256i stridey = _mm256_set1_epi32(BLKRES);
-	const __m256i stridez = _mm256_set1_epi32(1);
-
-	__m256i i0 =
-		_mm256_add_epi32(
-			_mm256_add_epi32(
-				_mm256_mullo_epi32(x8, stridex),
-				_mm256_mullo_epi32(y8, stridey)
-			),
-			z8
-		);
-	__m256i i1 = _mm256_add_epi32( i0, stridex );
-	__m256i i2 = _mm256_add_epi32( i1, stridey );
-	__m256i i3 = _mm256_add_epi32( i0, stridey );
-
-	__m256i i4 = _mm256_add_epi32( i0, stridez );
-	__m256i i5 = _mm256_add_epi32( i1, stridez );
-	__m256i i6 = _mm256_add_epi32( i2, stridez );
-	__m256i i7 = _mm256_add_epi32( i3, stridez );
-
-	ALIGNEDPRE int cases[BLKRES] ALIGNEDPST;
-
-	const __m256 iso8 = _mm256_set1_ps(isoval);
-
-	for (int z=0; z<BLKRES; z+=8)
-	{
-		// Get corner values.
-		const __m256i msk8 = _mm256_set1_epi32(1);
-#if defined(STORECHARS)
-		const __m256 one8 = _mm256_set1_ps(1.0f);
-		const __m256 scl8 = _mm256_set1_ps(1.0f / 128.0f);
-		const __m256 ff8  = _mm256_set1_epi32(0x000000ff);
-		const __m256i g0  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i0,1), ff8);
-		const __m256i g1  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i1,1), ff8);
-		const __m256i g2  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i2,1), ff8);
-		const __m256i g3  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i3,1), ff8);
-		const __m256i g4  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i4,1), ff8);
-		const __m256i g5  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i5,1), ff8);
-		const __m256i g6  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i6,1), ff8);
-		const __m256i g7  = _mm256_and_si256(_mm256_i32gather_epi32(fielddensity,i7,1), ff8);
-		const __m256 v0 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g0),scl8),one8);
-		const __m256 v1 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g1),scl8),one8);
-		const __m256 v2 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g2),scl8),one8);
-		const __m256 v3 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g3),scl8),one8);
-		const __m256 v4 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g4),scl8),one8);
-		const __m256 v5 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g5),scl8),one8);
-		const __m256 v6 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g6),scl8),one8);
-		const __m256 v7 = _mm256_sub_ps(_mm256_mul_ps(_mm256_cvtepi32_ps(g7),scl8),one8);
-#elif defined(STOREFP16)
-		const __m256 v0 = gather_fp16(fielddensity, i0);
-		const __m256 v1 = gather_fp16(fielddensity, i1);
-		const __m256 v2 = gather_fp16(fielddensity, i2);
-		const __m256 v3 = gather_fp16(fielddensity, i3);
-		const __m256 v4 = gather_fp16(fielddensity, i4);
-		const __m256 v5 = gather_fp16(fielddensity, i5);
-		const __m256 v6 = gather_fp16(fielddensity, i6);
-		const __m256 v7 = gather_fp16(fielddensity, i7);
-#else
-		const __m256 v0 =_mm256_i32gather_ps( fielddensity, i0, 4 );
-		const __m256 v1 =_mm256_i32gather_ps( fielddensity, i1, 4 );
-		const __m256 v2 =_mm256_i32gather_ps( fielddensity, i2, 4 );
-		const __m256 v3 =_mm256_i32gather_ps( fielddensity, i3, 4 );
-		const __m256 v4 =_mm256_i32gather_ps( fielddensity, i4, 4 );
-		const __m256 v5 =_mm256_i32gather_ps( fielddensity, i5, 4 );
-		const __m256 v6 =_mm256_i32gather_ps( fielddensity, i6, 4 );
-		const __m256 v7 =_mm256_i32gather_ps( fielddensity, i7, 4 );
-#endif
-		__m256i bit0 = _mm256_and_si256(_mm256_cmp_ps(v0, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,0));
-		__m256i bit1 = _mm256_and_si256(_mm256_cmp_ps(v1, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,1));
-		__m256i bit2 = _mm256_and_si256(_mm256_cmp_ps(v2, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,2));
-		__m256i bit3 = _mm256_and_si256(_mm256_cmp_ps(v3, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,3));
-		__m256i bit4 = _mm256_and_si256(_mm256_cmp_ps(v4, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,4));
-		__m256i bit5 = _mm256_and_si256(_mm256_cmp_ps(v5, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,5));
-		__m256i bit6 = _mm256_and_si256(_mm256_cmp_ps(v6, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,6));
-		__m256i bit7 = _mm256_and_si256(_mm256_cmp_ps(v7, iso8, _CMP_LE_OS), _mm256_slli_epi32(msk8,7));
-
-		__m256i caseidx8 =
-			_mm256_add_epi32(
-				_mm256_add_epi32(
-	 				_mm256_add_epi32(bit0,bit1),
-	 				_mm256_add_epi32(bit2,bit3)
-				),
-				_mm256_add_epi32(
-	 				_mm256_add_epi32(bit4,bit5),
-	 				_mm256_add_epi32(bit6,bit7)
-				)
-			);
-		// Store results.
-		_mm256_store_si256((__m256i*)(cases+z), caseidx8);
-
-		// advance to next 8.
-		const __m256i step = _mm256_set1_epi32(8);
-		i0 = _mm256_add_epi32(i0, step);
-		i1 = _mm256_add_epi32(i1, step);
-		i2 = _mm256_add_epi32(i2, step);
-		i3 = _mm256_add_epi32(i3, step);
-		i4 = _mm256_add_epi32(i4, step);
-		i5 = _mm256_add_epi32(i5, step);
-		i6 = _mm256_add_epi32(i6, step);
-		i7 = _mm256_add_epi32(i7, step);
-	}
-
-	int cnt=0;
-	const int encoded = ( cx << 16 ) | (cy << 8 );
-	for (int i=1; i<BLKRES-2; ++i)
-	{
-		int ca = cases[i];
-		if (ca!=0 && ca!=0xff)
-		{
-			assert(ca>0);
-			assert(ca<0xff);
-			if (listsizes[ca] >= MAXPERCASE)
-				fprintf(stderr,"Case %x exceeds num instances: %d\n", ca, listsizes[ca]);
-			assert(listsizes[ca]<MAXPERCASE);
-			caselists[ ca ][ listsizes[ca]++ ] = (encoded | i);
-			cnt++;
-		}
-	}
-
-	return cnt;
-}
+static ALIGNEDPRE caselist_t caselists[4][256] ALIGNEDPST;     // NOTE: per thread, because TLS doesn't work!
+static ALIGNEDPRE int listsizes[4][256] ALIGNEDPST;            // NOTE: per thread, because TLS doesn't work!
 
 
 static inline int mc_process_case_instances
@@ -539,17 +407,17 @@ static inline int mc_process_case_instances
 	int numcases,
 	int* cases,
  	const value_t* __restrict__ fielddensity,
-	const uint8_t* __restrict__ fieldtype,
+	const value_t* __restrict__ fieldtype,
 	float isoval,
  	float* __restrict__ outputv,	// vertices
  	float* __restrict__ outputn,	// normals
-	uint8_t* __restrict__ outputm	// materials
+	float* __restrict__ outputm	// materials
 )
 {
 	int num_trias_generated = 0;
 	float* writerv = outputv;
 	float* writern = outputn;
-	uint8_t* writerm = outputm;
+	float* writerm = outputm;
 
 	for (int inst=0; inst<numcases; ++inst)
 	{
@@ -655,12 +523,12 @@ static inline int mc_process_case_instances
 		// Determine the corner materials
 		float corner_materials[ 8 ];
 		for ( int i=0; i<8; ++i )
-			corner_materials[ i ] = fieldtype[ corner_idx[ 0 ] ];
+			corner_materials[ i ] = fieldtype[ corner_idx[ i ] ];
 
 		// Determine the vertices.
 		float edge_verts[ 12 ][ 3 ];
 		float edge_norms[ 12 ][ 3 ];
-		uint8_t edge_mtrls[ 12 ];
+		float edge_mtrls[ 12 ];
 		for ( int edge=0; edge<12; ++edge )
 		{
 			if ( edgeflags & ( 1 << edge ) )
@@ -669,6 +537,7 @@ static inline int mc_process_case_instances
 				const int i1 = edge_connections[ edge ][ 1 ];
 				//printf( "edge from %d(%f) to %d(%f)\n", i0, corner_values[ i0 ], i1, corner_values[ i1 ] );
 				const float offs = get_offset( corner_values[ i0 ], corner_values[ i1 ], isoval );
+				assert(offs>=0 && offs<=1);
 				edge_verts[ edge ][ 0 ] = x + vertex_offsets[ i0 ][ 0 ] + offs * edge_directions[ edge ][ 0 ];
 				edge_verts[ edge ][ 1 ] = y + vertex_offsets[ i0 ][ 1 ] + offs * edge_directions[ edge ][ 1 ];
 				edge_verts[ edge ][ 2 ] = z + vertex_offsets[ i0 ][ 2 ] + offs * edge_directions[ edge ][ 2 ];
@@ -682,7 +551,7 @@ static inline int mc_process_case_instances
 				edge_norms[ edge ][ 0 ] = nx * invlen;
 				edge_norms[ edge ][ 1 ] = ny * invlen;
 				edge_norms[ edge ][ 2 ] = nz * invlen;
-				edge_mtrls[ edge ] = corner_materials[ 0 ];
+				edge_mtrls[ edge ] = t0 * corner_materials[ i0 ] + t1 * corner_materials[ i1 ];
 			}
 		}
 
@@ -694,6 +563,7 @@ static inline int mc_process_case_instances
 			for ( int corner=0; corner<3; ++corner )
 			{
 				int vert = triangle_connection_table[ caseidx ][ 3*tria+corner ];
+				assert(vert<12 && vert>=0);
 				const float* v = edge_verts[ vert ];
 				const float* n = edge_norms[ vert ];
 				const float  m = edge_mtrls[ vert ];
@@ -711,290 +581,6 @@ static inline int mc_process_case_instances
 	return num_trias_generated;
 }
 #endif
-
-
-#if !USESIMD
-// Process a single cell with coordinates x,y,z and return the nr of triangles written in outputv/outputn.
-// outputv and outputn should accomodate a maximum of five triangles, or 45 floats each.
-static inline int mc_process_cell_hi
-(
- 	const float* __restrict__ fielddensity,
-	const uint8_t* __restrict__ fieldtype,
-	float isoval,
- 	int x, int y, int z,
- 	float* __restrict__ outputv,	// vertices
- 	float* __restrict__ outputn,	// normals
-	uint8_t* __restrict__ outputm	// materials
-)
-{
-	assert( x >= 1 && y >= 1 && z >= 1 && x < BLKRES-1 && y < BLKRES-1 && z < BLKRES-1 );
-	const int stridex = BLKRES*BLKRES;
-	const int stridey = BLKRES;
-	const int stridez = 1;
-
-	// retrieve the 8 corner values for this cell.
-	const int baseidx = x * stridex + y * stridey + z;
-	const int corner_idx[ 8 ] = 
-	{
-		baseidx+0,			// xyz
-		baseidx+stridex,		// Xyz
-		baseidx+stridex+stridey,	// XYz
-		baseidx+stridey,		// xYz
-		baseidx+stridez,		// xyZ
-		baseidx+stridex+stridez,	// XyZ
-		baseidx+stridex+stridey+stridez,// XYZ
-		baseidx+stridey+stridez		// xYZ
-	};
-
-	const float corner_values[ 8 ] =
-	{
-		fielddensity[ baseidx+0 ],			// xyz
-		fielddensity[ baseidx+BLKRES*BLKRES ],		// Xyz
-		fielddensity[ baseidx+BLKRES*BLKRES+BLKRES ],	// XYz
-		fielddensity[ baseidx+BLKRES ],			// xYz
-		fielddensity[ baseidx+1 ],			// xyZ
-		fielddensity[ baseidx+BLKRES*BLKRES+1 ],	// XyZ
-		fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ],	// XYZ
-		fielddensity[ baseidx+BLKRES+1 ]		// xYZ
-	};
-
-	// do in-out test for each value, to determine the case index for this cell.
-	int caseidx = 0;
-	for ( int i=0; i<8; ++i )
-		caseidx = caseidx | ( ( corner_values[ i ] <= isoval ) ? ( 1<<i ) : 0 );
-
-	// most common case is all points inside or all points outside: no triangles.
-	if ( caseidx==0 || caseidx==0xff )
-		return 0;
-
-	const int edgeflags = edge_flags[ caseidx ];
-
-	// Determine the corner normals
-	float corner_normals[ 8 ][ 3 ];
-	for ( int i=0; i<8; ++i )
-	{
-		const int i0 = corner_idx[ i ];
-
-		const int iprvx = i0 - stridex;
-		const int inxtx = i0 + stridex;
-		float dx = fielddensity[ inxtx ] - fielddensity[ iprvx ];
-
-		const int iprvy = i0 - stridey;
-		const int inxty = i0 + stridey;
-		float dy = fielddensity[ inxty ] - fielddensity[ iprvy ];
-
-		const int iprvz = i0 - stridez;
-		const int inxtz = i0 + stridez;
-		float dz = fielddensity[ inxtz ] - fielddensity[ iprvz ];
-
-#if 0
-		const float th = 1.5f;
-		dx = dx >  th ?  th : dx;
-		dx = dx < -th ? -th : dx;
-		dy = dy >  th ?  th : dy;
-		dy = dy < -th ? -th : dy;
-		dz = dz >  th ?  th : dz;
-		dz = dz < -th ? -th : dz;
-#endif
-
-		const float lensq = dx*dx + dy*dy + dz*dz;
-		const float invlen = lensq > FLT_EPSILON ? 1.0f / sqrtf(lensq) : 1.0f;
-		corner_normals[ i ][ 0 ] = -dx * invlen;
-		corner_normals[ i ][ 1 ] = -dy * invlen;
-		corner_normals[ i ][ 2 ] = -dz * invlen;
-	}
-
-	// Determine the corner materials
-	float corner_materials[ 8 ];
-	for ( int i=0; i<8; ++i )
-		corner_materials[ i ] = fieldtype[ corner_idx[ i ] ];
-
-	// Determine the vertices.
-	float edge_verts[ 12 ][ 3 ];
-	float edge_norms[ 12 ][ 3 ];
-	uint8_t edge_mtrls[ 12 ];
-	for ( int edge=0; edge<12; ++edge )
-	{
-		if ( edgeflags & ( 1 << edge ) )
-		{
-			const int i0 = edge_connections[ edge ][ 0 ];
-			const int i1 = edge_connections[ edge ][ 1 ];
-			//printf( "edge from %d(%f) to %d(%f)\n", i0, corner_values[ i0 ], i1, corner_values[ i1 ] );
-			const float offs = get_offset( corner_values[ i0 ], corner_values[ i1 ], isoval );
-			edge_verts[ edge ][ 0 ] = x + vertex_offsets[ i0 ][ 0 ] + offs * edge_directions[ edge ][ 0 ];
-			edge_verts[ edge ][ 1 ] = y + vertex_offsets[ i0 ][ 1 ] + offs * edge_directions[ edge ][ 1 ];
-			edge_verts[ edge ][ 2 ] = z + vertex_offsets[ i0 ][ 2 ] + offs * edge_directions[ edge ][ 2 ];
-			const float t0 = 1.0f - offs;
-			const float t1 = offs;
-			const float nx = t0 * corner_normals[ i0 ][ 0 ] + t1 * corner_normals[ i1 ][ 0 ];
-			const float ny = t0 * corner_normals[ i0 ][ 1 ] + t1 * corner_normals[ i1 ][ 1 ];
-			const float nz = t0 * corner_normals[ i0 ][ 2 ] + t1 * corner_normals[ i1 ][ 2 ];
-			const float lengthsq  = nx*nx + ny*ny + nz*nz;
-			const float invlen = lengthsq > 0.0f ? 1.0f/sqrtf(lengthsq) : 1;
-			edge_norms[ edge ][ 0 ] = nx * invlen;
-			edge_norms[ edge ][ 1 ] = ny * invlen;
-			edge_norms[ edge ][ 2 ] = nz * invlen;
-			edge_mtrls[ edge ] = corner_materials[ 0 ];
-		}
-	}
-
-	// Determine the triangles (up to five per cube).
-	int num_trias_generated = 0;
-	float* writerv = outputv;
-	float* writern = outputn;
-	uint8_t* writerm = outputm;
-	for ( int tria=0; tria<5; ++tria )
-	{
-		if ( triangle_connection_table[ caseidx ][ 3*tria ] < 0 )
-			break;
-		for ( int corner=0; corner<3; ++corner )
-		{
-			int vert = triangle_connection_table[ caseidx ][ 3*tria+corner ];
-			const float* v = edge_verts[ vert ];
-			const float* n = edge_norms[ vert ];
-			const float  m = edge_mtrls[ vert ];
-			memcpy( writerv, v, 3*sizeof(float) );
-			memcpy( writern, n, 3*sizeof(float) );
-			*writerm = m;
-			writerv += 3;
-			writern += 3;
-			writerm += 1;
-		}
-		num_trias_generated++;
-	}
-	return num_trias_generated;
-}
-#endif
-
-
-#if USESIMD
-static ALIGNEDPRE caselist_t caselists[4][256] ALIGNEDPST;	// NOTE: per thread, because TLS doesn't work!
-static ALIGNEDPRE int listsizes[4][256] ALIGNEDPST;		// NOTE: per thread, because TLS doesn't work!
-// Marching cubes for an entire block.
-int surface_extract
-(
-	const value_t* __restrict__ fielddensity,
-	const uint8_t* __restrict__ fieldtype,
- 	float isoval,
-	int xlo,
-	int xhi,
-	int ylo,
-	int yhi,
- 	float* __restrict__ outputv,
- 	float* __restrict__ outputn,
- 	uint8_t* __restrict__ outputm,
- 	int maxtria,
-	int threadnr
-)
-{
-	assert(threadnr>=0 && threadnr<4);
-	TT_BEGIN("classify");
-	memset(listsizes[threadnr], 0, 256*sizeof(int));
-	int cnt=0;
-	for (int x=xlo; x<xhi; ++x)
-		for (int y=ylo; y<yhi; ++y)
-		{
-			const int nonempty = mc_process_column(isoval, fielddensity, x,y, caselists[threadnr], listsizes[threadnr]);
-			cnt += nonempty;
-		}
-	TT_END("classify");
-	//fprintf(stderr, "%d out of %d cells have geometry.\n", cnt, BLKSIZ);
-
-	// Now we have all voxels, sorted by case.
-	// We need to generate geometry for them.
-
-	float* __restrict__ v = outputv;
-	float* __restrict__ n = outputn;
-	uint8_t* __restrict__ m = outputm;
-	int totaltria = 0;
-
-	int total=0;
-	for (int ca=1; ca<0xff; ca++)
-		total += triangle_count_table[ca] * listsizes[threadnr][ca];
-	assert(total<maxtria);
-
-	TT_BEGIN("generate");
-	// For each of the cases...
-	for (int ca=1; ca<0xff; ca++)
-	{
-		const int numt = mc_process_case_instances
-		(
-			ca,
-			listsizes[threadnr][ca],
-			caselists[threadnr][ca],
- 			fielddensity,
-			fieldtype,
-			isoval,
- 			v,	// vertices
- 			n,	// normals
-			m	// materials
-		);
-		v += numt * 3 * 3;
-		n += numt * 3 * 3;
-		m += numt * 3;
-		totaltria += numt;
-		assert(totaltria < maxtria);
-	}
-	TT_END("generate");
-	return totaltria;
-}
-#endif
-
-
-#if !USESIMD
-// Marching cubes for an entire block.
-int surface_extract
-(
-	const float* __restrict__ fielddensity,
-	const uint8_t* __restrict__ fieldtype,
- 	float isoval,
-	int xlo,
-	int xhi,
-	int ylo,
-	int yhi,
- 	float* __restrict__ outputv,
- 	float* __restrict__ outputn,
- 	uint8_t* __restrict__ outputm,
- 	int maxtria,
-	int threadnr
-)
-{
-	float* __restrict__ v = outputv;
-	float* __restrict__ n = outputn;
-	uint8_t* __restrict__ m = outputm;
-	int totaltria = 0;
-	const int zlo=1;
-	const int zhi=BLKRES-2;
-	int nonempty = 0;
-	for (  int x=xlo; x<xhi; ++x )
-	{
-		for ( int y=ylo; y<yhi; ++y )
-		{
-			for ( int z=zlo; z<zhi; ++z )
-			{
-				assert( totaltria < maxtria - 5 );
-				const int numt = mc_process_cell_hi
-				(
-					fielddensity, 
-					fieldtype,
-					isoval, 
-					x, y, z, 
-					v, n, m
-				);
-				assert( numt <= 5 && numt >= 0 );
-				v += numt * 3 * 3;
-				n += numt * 3 * 3;
-				m += numt * 3;
-				totaltria += numt;
-				if (numt) nonempty++;
-			}
-		}
-	}
-	//fprintf(stderr, "Non empty cells: %d of %d\n", nonempty, BLKRES*BLKRES*BLKRES);
-	return totaltria;
-}
-#endif
-
 
 
 void surface_writeobj( const char* fname, int numtria, const float* verts, const float* norms, const float* offs )
@@ -1033,186 +619,11 @@ void surface_writeobj( const char* fname, int numtria, const float* verts, const
 }
 
 
-static inline int mc_process_single_case
-(
-	int caseidx,
- 	const value_t* __restrict__ fielddensity,
-	int x,
-	int y,
-	int z,
-	float isoval,
- 	float* __restrict__ outputv,	// vertices
- 	float* __restrict__ outputn,	// normals
-	uint8_t* __restrict__ outputm	// materials
-)
-{
-	int num_trias_generated = 0;
-	float* writerv = outputv;
-	float* writern = outputn;
-	uint8_t* writerm = outputm;
-
-	const int stridex = BLKRES*BLKRES;
-	const int stridey = BLKRES;
-	const int stridez = 1;
-
-	// retrieve the 8 corner values for this cell.
-	const int baseidx = x * stridex + y * stridey + z;
-	assert(baseidx>=0 && baseidx<BLKRES*BLKRES*BLKRES);
-	const int corner_idx[ 8 ] = 
-	{
-		baseidx+0,			// xyz
-		baseidx+stridex,		// Xyz
-		baseidx+stridex+stridey,	// XYz
-		baseidx+stridey,		// xYz
-		baseidx+stridez,		// xyZ
-		baseidx+stridex+stridez,	// XyZ
-		baseidx+stridex+stridey+stridez,// XYZ
-		baseidx+stridey+stridez		// xYZ
-	};
-
-#if defined(STORECHARS)
-	const float scl = 1/128.0f;
-	const float corner_values[ 8 ] =
-	{
-		scl*(fielddensity[ baseidx+0                      ]-128.0f),	// xyz
-		scl*(fielddensity[ baseidx+BLKRES*BLKRES          ]-128.0f),	// Xyz
-		scl*(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES   ]-128.0f),	// XYz
-		scl*(fielddensity[ baseidx+BLKRES                 ]-128.0f),	// xYz
-		scl*(fielddensity[ baseidx+1                      ]-128.0f),	// xyZ
-		scl*(fielddensity[ baseidx+BLKRES*BLKRES+1        ]-128.0f),	// XyZ
-		scl*(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ]-128.0f),	// XYZ
-		scl*(fielddensity[ baseidx+BLKRES+1               ]-128.0f),	// xYZ
-	};
-#elif defined(STOREFP16)
-	const float corner_values[ 8 ] =
-	{
-		//_cvtsh_ss(fielddensity[ baseidx+0                      ]),	// xyz
-		(float)(fielddensity[ baseidx+0                      ]),	// xyz
-		(float)(fielddensity[ baseidx+BLKRES*BLKRES          ]),	// Xyz
-		(float)(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES   ]),	// XYz
-		(float)(fielddensity[ baseidx+BLKRES                 ]),	// xYz
-		(float)(fielddensity[ baseidx+1                      ]),	// xyZ
-		(float)(fielddensity[ baseidx+BLKRES*BLKRES+1        ]),	// XyZ
-		(float)(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ]),	// XYZ
-		(float)(fielddensity[ baseidx+BLKRES+1               ]),	// xYZ
-	};
-#else
-	const float corner_values[ 8 ] =
-	{
-		fielddensity[ baseidx+0 ],			// xyz
-		fielddensity[ baseidx+BLKRES*BLKRES ],		// Xyz
-		fielddensity[ baseidx+BLKRES*BLKRES+BLKRES ],	// XYz
-		fielddensity[ baseidx+BLKRES ],			// xYz
-		fielddensity[ baseidx+1 ],			// xyZ
-		fielddensity[ baseidx+BLKRES*BLKRES+1 ],	// XyZ
-		fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ],	// XYZ
-		fielddensity[ baseidx+BLKRES+1 ]		// xYZ
-	};
-#endif
-
-	//fprintf(stderr,"%f %f %f %f %f %f %f %f\n", corner_values[0],corner_values[1],corner_values[2],corner_values[3],corner_values[4],corner_values[5],corner_values[6],corner_values[7]);
-	const int edgeflags = edge_flags[ caseidx ];
-
-	// Determine the corner normals
-	float corner_normals[ 8 ][ 3 ];
-	for ( int i=0; i<8; ++i )
-	{
-		const int i0 = corner_idx[ i ];
-
-		const int iprvx = i0 - stridex;
-		const int inxtx = i0 + stridex;
-		float dx = (float)fielddensity[ inxtx ] - (float)fielddensity[ iprvx ];
-
-		const int iprvy = i0 - stridey;
-		const int inxty = i0 + stridey;
-		float dy = (float)fielddensity[ inxty ] - (float)fielddensity[ iprvy ];
-
-		const int iprvz = i0 - stridez;
-		const int inxtz = i0 + stridez;
-		float dz = (float)fielddensity[ inxtz ] - (float)fielddensity[ iprvz ];
-
-#if 0
-		const float th = 1.5f;
-		dx = dx >  th ?  th : dx;
-		dx = dx < -th ? -th : dx;
-		dy = dy >  th ?  th : dy;
-		dy = dy < -th ? -th : dy;
-		dz = dz >  th ?  th : dz;
-		dz = dz < -th ? -th : dz;
-#endif
-
-		const float lensq = dx*dx + dy*dy + dz*dz;
-		const float invlen = lensq > FLT_EPSILON ? 1.0f / sqrtf(lensq) : 1.0f;
-		corner_normals[ i ][ 0 ] = -dx * invlen;
-		corner_normals[ i ][ 1 ] = -dy * invlen;
-		corner_normals[ i ][ 2 ] = -dz * invlen;
-	}
-	
-	// Determine the corner materials
-	float corner_materials[ 8 ];
-	for ( int i=0; i<8; ++i )
-		corner_materials[ i ] = 0; // TODO
-
-	// Determine the vertices.
-	float edge_verts[ 12 ][ 3 ];
-	float edge_norms[ 12 ][ 3 ];
-	uint8_t edge_mtrls[ 12 ];
-	for ( int edge=0; edge<12; ++edge )
-	{
-		if ( edgeflags & ( 1 << edge ) )
-		{
-			const int i0 = edge_connections[ edge ][ 0 ];
-			const int i1 = edge_connections[ edge ][ 1 ];
-			//printf( "edge from %d(%f) to %d(%f)\n", i0, corner_values[ i0 ], i1, corner_values[ i1 ] );
-			const float offs = get_offset( corner_values[ i0 ], corner_values[ i1 ], isoval );
-			edge_verts[ edge ][ 0 ] = x + vertex_offsets[ i0 ][ 0 ] + offs * edge_directions[ edge ][ 0 ];
-			edge_verts[ edge ][ 1 ] = y + vertex_offsets[ i0 ][ 1 ] + offs * edge_directions[ edge ][ 1 ];
-			edge_verts[ edge ][ 2 ] = z + vertex_offsets[ i0 ][ 2 ] + offs * edge_directions[ edge ][ 2 ];
-			const float t0 = 1.0f - offs;
-			const float t1 = offs;
-			const float nx = t0 * corner_normals[ i0 ][ 0 ] + t1 * corner_normals[ i1 ][ 0 ];
-			const float ny = t0 * corner_normals[ i0 ][ 1 ] + t1 * corner_normals[ i1 ][ 1 ];
-			const float nz = t0 * corner_normals[ i0 ][ 2 ] + t1 * corner_normals[ i1 ][ 2 ];
-			const float lengthsq  = nx*nx + ny*ny + nz*nz;
-			const float invlen = lengthsq > 0.0f ? 1.0f/sqrtf(lengthsq) : 1;
-			edge_norms[ edge ][ 0 ] = nx * invlen;
-			edge_norms[ edge ][ 1 ] = ny * invlen;
-			edge_norms[ edge ][ 2 ] = nz * invlen;
-			edge_mtrls[ edge ] = corner_materials[ 0 ];
-		}
-	}
-
-	// Determine the triangles (up to five per cube).
-	for ( int tria=0; tria<5; ++tria )
-	{
-		if ( triangle_connection_table[ caseidx ][ 3*tria ] < 0 )
-			break;
-		for ( int corner=0; corner<3; ++corner )
-		{
-			int vert = triangle_connection_table[ caseidx ][ 3*tria+corner ];
-			const float* v = edge_verts[ vert ];
-			const float* n = edge_norms[ vert ];
-			const float  m = edge_mtrls[ vert ];
-			memcpy( writerv, v, 3*sizeof(float) );
-			memcpy( writern, n, 3*sizeof(float) );
-			*writerm = m;
-			writerv += 3;
-			writern += 3;
-			writerm += 1;
-		}
-		num_trias_generated++;
-	}
-
-	//fprintf(stderr,"case %x: %d trias.\n", caseidx, num_trias_generated);
-	return num_trias_generated;
-}
-
-
 // Extract cases.
 extern int surface_extract_cases
 (
 	const value_t* __restrict__ fielddensity,	// density field.
-	uint8_t* __restrict__ fieldtype,		// material type.
+	const value_t* __restrict__ fieldtype,		// material type.
 	const uint8_t* __restrict__ cases,
 	float isoval,					// iso value that separates volumes.
 	const int* __restrict__ gridoff,
@@ -1222,14 +633,14 @@ extern int surface_extract_cases
 	int yhi,
 	float*  __restrict__ outputv,			// surface verts
 	float*  __restrict__ outputn,			// surface normals
-	uint8_t*  __restrict__ outputm,			// surface materials
+	float*  __restrict__ outputm,			// surface materials
 	int maxtria,					// maximum number of triangles.
 	int threadnr					// Use scratch pool 0,1,2 or 3.
 )
 {
 	float*   v = outputv;
 	float*   n = outputn;
-	uint8_t* m = outputm;
+	float*   m = outputm;
 
 	int*        sizes = listsizes[threadnr];
 	caselist_t* lists = caselists[threadnr];
@@ -1258,64 +669,6 @@ extern int surface_extract_cases
 	for (int ca=1; ca<0xff; ca++)
 		total += triangle_count_table[ca] * sizes[ca];
 	assert(total<maxtria);
-
-	TT_BEGIN("mattgen");
-	__m256i offx = _mm256_set1_epi32(gridoff[0]);
-	__m256i offy = _mm256_set1_epi32(gridoff[1]);
-	__m256i offz = _mm256_set1_epi32(gridoff[2]);
-	for (int ca=1; ca<255; ++ca)
-	{
-		const int cnt = sizes[ca];
-		const int* instances = lists[ca];
-		if (cnt)
-			assert( instances[cnt-1] > 0 );
-		for (int b=0; b<cnt; b+=8)
-		{
-			__m256i encoded8 = _mm256_load_si256((__m256i*)(instances+b));
-			const __m256i msk8 = _mm256_set1_epi32(0xff);
-			__m256i zc = _mm256_and_si256(encoded8,                       msk8);
-			__m256i yc = _mm256_and_si256(_mm256_srli_epi32(encoded8, 8), msk8);
-			__m256i xc = _mm256_and_si256(_mm256_srli_epi32(encoded8,16), msk8);
-			zc = _mm256_add_epi32(zc, offz);
-			yc = _mm256_add_epi32(yc, offy);
-			xc = _mm256_add_epi32(xc, offx);
-			const __m256 scl8 = _mm256_set1_ps(2.0 / BLKRES);
-			const __m256 sx = _mm256_mul_ps(_mm256_cvtepi32_ps(xc), scl8);
-			const __m256 sy = _mm256_mul_ps(_mm256_cvtepi32_ps(yc), scl8);
-			const __m256 sz = _mm256_mul_ps(_mm256_cvtepi32_ps(zc), scl8);
-			const __m256 wx = osino_avx_3d(sz,sx,sy);
-			const __m256 wy = osino_avx_3d(sy,sx,sz);
-			const __m256 wz = osino_avx_3d(sy,sz,sx);
-#if 0
-			__m256 v = osino_avx_3d(x,y,z);
-			(
-				sx,
-				sy,
-				sz
-			);
-#else
-			__m256 v = osino_avx_3d_4o
-			(
-				_mm256_add_ps(sx,wx),
-				_mm256_add_ps(sy,wy),
-				_mm256_add_ps(sz,wz),
-				0.6f, 0.4f
-			);
-#endif
-			ALIGNEDPRE float vals[8] ALIGNEDPST;
-			_mm256_store_ps(vals, v);
-			for (int j=0; j<8; j++)
-			{
-				const int enc = instances[b+j];
-				const int x = (enc>>16) & 0xff;
-				const int y = (enc>> 8) & 0xff;
-				const int z = (enc    ) & 0xff;
-				const float perturb = bluenoise[(x+gridoff[0])&15][(y+gridoff[1])&15][(z+gridoff[2])&15];
-				fieldtype[ x*BLKRES*BLKRES + y*BLKRES + z ] = (uint8_t) (128 + 120 * vals[j] + perturb);
-			}
-		}
-	}
-	TT_END  ("mattgen");
 
 	// Now generate all triangles...
 	TT_BEGIN("generate");

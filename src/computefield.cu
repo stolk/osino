@@ -286,6 +286,60 @@ float osino_3d_4o( float x, float y, float z, float lacunarity, float persistenc
 
 extern "C"
 {
+
+__global__
+void osino_computematter
+(
+	value_t* field,
+	int gridoff_x, int gridoff_y, int gridoff_z,
+	int fullgridsz,
+	float offset_x,
+	float offset_y,
+	float offset_z,
+	float domainwarp,
+	float freq,
+	float lacunarity,
+	float persistence
+)
+{
+	const int zc = threadIdx.x;
+	const int yc = blockIdx.x & 0xff;
+	const int xc = (blockIdx.x >> 8);
+
+	const float ifull = 1.0f / fullgridsz;
+	const float s0 = 2.017f * ifull;
+	const float s1 = 2.053f * ifull;
+	const float s2 = 2.099f * ifull;
+	float x = ( (xc+gridoff_x) - 0.5f*fullgridsz ) * s0;
+	float y = ( (yc+gridoff_y) - 0.5f*fullgridsz ) * s1;
+	float z = ( (zc+gridoff_z) - 0.5f*fullgridsz ) * s2;
+#if 1
+	const float lsq_unwarped = x*x + y*y + z*z; // 0 .. 0.25
+	const float depth = 0.25f - lsq_unwarped;
+	const float clippeddepth = fmaxf(depth, 0.0f);
+	const float warpstrength = domainwarp * (0.5 + clippeddepth * 10.0f);
+	const float wx = osino_3d(offset_x+11+y, offset_y+23-z, offset_z+17+x) * warpstrength;
+	const float wy = osino_3d(offset_x+19-z, offset_y+13+x, offset_z+11-y) * warpstrength;
+	const float wz = osino_3d(offset_x+31+x, offset_y+41-z, offset_z+61+y) * warpstrength;
+	x += wx;
+	y += wy;
+	z += wz;
+#endif
+	const int idx = (xc * (256*256)) + (yc*256) + zc;
+	float result = osino_3d_4o(offset_x+freq*x,offset_y+freq*y,offset_z+freq*z,lacunarity,persistence);
+	result = result < -1 ? -1 : result;
+	result = result >  1 ?  1 : result;
+#if defined(STORECHARS)
+	float perturb = bluenoise[ xc&15 ][ yc&15 ][ zc&15 ];
+	//float perturb = honeycomb[ 0 ][ yc % 32 ][ xc % 48 ];
+	field[ idx ] = (value_t) ( 127 + 127 * result + perturb);
+#elif defined(STOREFP16)
+	field[ idx ] = __float2half(result);
+#else
+	field[ idx ] = result;
+#endif
+}
+
 __global__
 void osino_computefield
 (

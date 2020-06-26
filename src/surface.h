@@ -24,7 +24,7 @@ extern "C" {
 extern int surface_extract_cases
 (
 	const value_t* __restrict__ fielddensity,	// density field.
-	uint8_t* __restrict__ fieldtype,		// materials.
+	const value_t* __restrict__ fieldtype,		// materials.
 	const uint8_t* __restrict__ cases,
 	float isoval,					// iso value that separates volumes.
 	const int* __restrict__ gridoff,
@@ -34,24 +34,7 @@ extern int surface_extract_cases
 	int yhi,
 	float*  __restrict__ outputv,			// surface verts
 	float*  __restrict__ outputn,			// surface normals
-	uint8_t*  __restrict__ outputm,			// surface materials
-	int maxtria,					// maximum number of triangles.
-	int threadnr					// Use scratch pool 0,1,2 or 3.
-);
-
-// Extract a surface from a 3D field using an iso value.
-extern int surface_extract
-(
-	const value_t* __restrict__ fielddensity,	// density field.
-	const uint8_t* __restrict__ fieldtype,		// materials.
-	float isoval,					// iso value that separates volumes.
-	int xlo,					// x-range
-	int xhi,
-	int ylo,					// y-range
-	int yhi,
-	float*  __restrict__ outputv,			// surface verts
-	float*  __restrict__ outputn,			// surface normals
-	uint8_t*  __restrict__ outputm,			// surface materials
+	float*  __restrict__ outputm,			// surface materials
 	int maxtria,					// maximum number of triangles.
 	int threadnr					// Use scratch pool 0,1,2 or 3.
 );
