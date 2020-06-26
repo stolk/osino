@@ -86,6 +86,24 @@ void osino_classifyfield
 	cases[i0] = c;
 }
 
+
+__global__
+void osino_setupfield(value_t* field)
+{
+	const int zc = threadIdx.x;
+	const int yc = blockIdx.x & 0xff;
+	const int xc = (blockIdx.x >> 8);
+
+	const int i0 = zc + yc*BLKRES + xc*BLKRES*BLKRES;
+
+	float x = 0.5f * BLKRES - xc;
+	float y = 0.5f * BLKRES - yc;
+	float z = 0.5f * BLKRES - zc;
+	float d = sqrtf(x*x + y*y + z*z);
+	field[i0] = __float2half(d);
+}
+
+
 __host__
 void query(void)
 {
@@ -134,9 +152,10 @@ int main(int argc, char* argv[])
 	assert(cases);
 	CHECK_CUDA
 
-	//osino_computefield<<<BLKRES*BLKRES,BLKRES>>>(field, 0,0,0, BLKRES, 0,0,0, 1.0f, 1.0f, 0.5f, 0.5f );
+	osino_setupfield<<<BLKRES*BLKRES,BLKRES>>>( field );
+	CHECK_CUDA
 
-	osino_classifyfield<<<BLKRES*BLKRES,BLKRES>>>( 0.0f, field, cases );
+	osino_classifyfield<<<BLKRES*BLKRES,BLKRES>>>( 100.0f, field, cases );
 	CHECK_CUDA
 
 	cudaDeviceSynchronize();
@@ -144,8 +163,9 @@ int main(int argc, char* argv[])
 
 	FILE* f = fopen("out_classify.pgm","wb");
 	fprintf(f, "P5\n%d %d\n255\n", BLKRES, BLKRES);
+	const uint8_t* reader = cases + (BLKRES/2)*BLKRES*BLKRES;
 	for (int i=0; i<256*256; ++i)
-		fputc(cases[i],f);
+		fputc(reader[i],f);
 	fclose(f);
 
 	cudaFree(cases);
