@@ -32,12 +32,30 @@ extern int surface_extract_cases
 	int xhi,
 	int ylo,					// y-range
 	int yhi,
+	int zlo,
+	int zhi,
 	float*  __restrict__ outputv,			// surface verts
 	float*  __restrict__ outputn,			// surface normals
 	float*  __restrict__ outputm,			// surface materials
 	int maxtria,					// maximum number of triangles.
 	int threadnr					// Use scratch pool 0,1,2 or 3.
 );
+
+
+// Reclassify a subsector of the field.
+void osino_reclassifyfield
+(
+	float isoval,
+	const value_t* field,
+	uint8_t* cases,
+	int xlo,
+	int xhi,
+	int ylo,
+	int yhi,
+	int zlo,
+	int zhi
+);
+
 
 // Dump geometry to Wavefront OBJ file.
 extern void surface_writeobj
