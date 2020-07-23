@@ -717,25 +717,23 @@ void osino_reclassifyfield
 	const int stridey = BLKRES;
 	const int stridez = 1;
 
-	const int accely = stridey - ( zhi-zlo );
-	const int accelx = stridex - ( yhi-ylo );
-	const int start  = stridex*xlo + stridey*ylo + stridez*zlo;
-	uint8_t*  writer = cases + start;
-
-	const value_t* f0 = field + start;
-	const value_t* f1 = f0 + stridex;
-	const value_t* f2 = f1 + stridey;
-	const value_t* f3 = f0 + stridey;
-
-	const value_t* f4 = f0 + stridez;
-	const value_t* f5 = f1 + stridez;
-	const value_t* f6 = f2 + stridez;
-	const value_t* f7 = f3 + stridez;
-
 	for (int x=xlo; x<xhi; ++x)
 	{
-		for (int y=ylo; y<xhi; ++y)
+		for (int y=ylo; y<yhi; ++y)
 		{
+			const int off = x*stridex + y*stridey + zlo*stridez;
+			uint8_t* writer = cases + off;
+
+			const value_t* f0 = field + off;
+			const value_t* f1 = f0 + stridex;
+			const value_t* f2 = f1 + stridey;
+			const value_t* f3 = f0 + stridey;
+
+			const value_t* f4 = f0 + stridez;
+			const value_t* f5 = f1 + stridez;
+			const value_t* f6 = f2 + stridez;
+			const value_t* f7 = f3 + stridez;
+
 			for (int z=zlo; z<zhi; ++z)
 			{
 				const float v0 = *f0++;
@@ -755,26 +753,8 @@ void osino_reclassifyfield
 				const int bit6 = v6 <= isoval ? 0x40 : 0;
 				const int bit7 = v7 <= isoval ? 0x80 : 0;
 				const uint8_t c = bit0|bit1|bit2|bit3|bit4|bit5|bit6|bit7;
-				*writer++ = 0; //c;
+				*writer++ = c;
 			}
-			writer += accely;
-			f0 += accely;
-			f1 += accely;
-			f2 += accely;
-			f3 += accely;
-			f4 += accely;
-			f5 += accely;
-			f6 += accely;
-			f7 += accely;
 		}
-		writer += accelx;
-		f0 += accelx;
-		f1 += accelx;
-		f2 += accelx;
-		f3 += accelx;
-		f4 += accelx;
-		f5 += accelx;
-		f6 += accelx;
-		f7 += accelx;
 	}
 }
