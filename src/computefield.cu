@@ -24,6 +24,8 @@
 #include "honeycomb.h"
 #endif
 
+#define BLKRES	(1<<BLKMAG)
+
 
 // Skewing / Unskewing factors for 2, 3, and 4 dimensions.
 #define F2      0.3660254037844386f     // 0.5*(Math.sqrt(3.0)-1.0);
@@ -291,6 +293,7 @@ __global__
 void osino_computematter
 (
 	value_t* field,
+	int stride,
 	int gridoff_x, int gridoff_y, int gridoff_z,
 	int fullgridsz,
 	float offset_x,
@@ -310,9 +313,9 @@ void osino_computematter
 	const float s0 = 2.017f * ifull;
 	const float s1 = 2.053f * ifull;
 	const float s2 = 2.099f * ifull;
-	float x = ( (xc+gridoff_x) - 0.5f*fullgridsz ) * s0;
-	float y = ( (yc+gridoff_y) - 0.5f*fullgridsz ) * s1;
-	float z = ( (zc+gridoff_z) - 0.5f*fullgridsz ) * s2;
+	float x = ( (xc*stride+gridoff_x) - 0.5f*fullgridsz ) * s0;
+	float y = ( (yc*stride+gridoff_y) - 0.5f*fullgridsz ) * s1;
+	float z = ( (zc*stride+gridoff_z) - 0.5f*fullgridsz ) * s2;
 #if 1
 	const float lsq_unwarped = x*x + y*y + z*z; // 0 .. 0.25
 	const float depth = 0.25f - lsq_unwarped;
@@ -325,7 +328,7 @@ void osino_computematter
 	y += wy;
 	z += wz;
 #endif
-	const int idx = (xc * (256*256)) + (yc*256) + zc;
+	const int idx = (xc * (BLKRES*BLKRES)) + (yc*BLKRES) + zc;
 	float result = osino_3d_4o(offset_x+freq*x,offset_y+freq*y,offset_z+freq*z,lacunarity,persistence);
 	result = result < -1 ? -1 : result;
 	result = result >  1 ?  1 : result;
@@ -344,6 +347,7 @@ __global__
 void osino_computefield
 (
 	value_t* field,
+	int stride,
 	int gridoff_x, int gridoff_y, int gridoff_z,
 	int fullgridsz,
 	float offset_x,
@@ -363,9 +367,9 @@ void osino_computefield
 	const float s0 = 2.017f * ifull;
 	const float s1 = 2.053f * ifull;
 	const float s2 = 2.099f * ifull;
-	float x = ( (xc+gridoff_x) - 0.5f*fullgridsz ) * s0;
-	float y = ( (yc+gridoff_y) - 0.5f*fullgridsz ) * s1;
-	float z = ( (zc+gridoff_z) - 0.5f*fullgridsz ) * s2;
+	float x = ( (xc*stride+gridoff_x) - 0.5f*fullgridsz ) * s0;
+	float y = ( (yc*stride+gridoff_y) - 0.5f*fullgridsz ) * s1;
+	float z = ( (zc*stride+gridoff_z) - 0.5f*fullgridsz ) * s2;
 #if 1
 	const float lsq_unwarped = x*x + y*y + z*z; // 0 .. 0.25
 	const float depth = 0.25f - lsq_unwarped;
@@ -384,7 +388,7 @@ void osino_computefield
 
 	const float v = osino_3d_4o(offset_x+freq*x,offset_y+freq*y,offset_z+freq*z,lacunarity,persistence);
 
-	const int idx = (xc * (256*256)) + (yc*256) + zc;
+	const int idx = (xc * (BLKRES*BLKRES)) + (yc*BLKRES) + zc;
 	float result = v+d;
 	result = result < -1 ? -1 : result;
 	result = result >  1 ?  1 : result;
@@ -410,7 +414,7 @@ void osino_test2d(float* field)
 	const float x = xc * 0.01f;
 	const float y = yc * 0.01f;
 	const float v = osino_2d(x,y);
-	field[ yc*256 + xc ] = v;
+	field[ yc*BLKRES + xc ] = v;
 }
 
 
@@ -424,7 +428,7 @@ void osino_test3d(float* field)
 	const float y = yc * 0.01f;
 	const float z = zc * 0.01f;
 	const float v = osino_3d(x,y,z);
-	field[ zc*256*256 + yc*256 + xc ] = v;
+	field[ zc*BLKRES*BLKRES + yc*BLKRES + xc ] = v;
 }
 #endif
 
@@ -464,8 +468,7 @@ int main(int argc, char* argv[])
 {
 	query();
 
-	const int BLKRES = 256;
-	const int N = 256*256*256;
+	const int N = BLKRES*BLKRES*BLKRES;
 
 	value_t* field = 0;
 	cudaMallocManaged(&field, N*sizeof(value_t));
@@ -473,7 +476,7 @@ int main(int argc, char* argv[])
 
 	CHECK_CUDA
 
-	osino_computefield<<<BLKRES*BLKRES,BLKRES>>>(field, 0,0,0, BLKRES, 0,0,0, 1.0f, 1.0f, 0.5f, 0.5f );
+	osino_computefield<<<BLKRES*BLKRES,BLKRES>>>(field, 1, 0,0,0, BLKRES, 0,0,0, 1.0f, 1.0f, 0.5f, 0.5f );
 
 	cudaDeviceSynchronize();
 	CHECK_CUDA
@@ -481,7 +484,7 @@ int main(int argc, char* argv[])
 	const value_t* im = field + (BLKRES/2)*BLKRES*BLKRES;
 	FILE* f = fopen("out_compute.pgm","wb");
 	fprintf(f, "P5\n%d %d\n255\n", BLKRES, BLKRES);
-	for (int i=0; i<256*256; ++i)
+	for (int i=0; i<BLKRES*BLKRES; ++i)
 	{
 #if defined(STOREFP16)
                 const value_t v = im[i];
