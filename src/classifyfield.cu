@@ -4,6 +4,7 @@
 #include <cuda_fp16.h>
 
 #define BLKRES	(1<<BLKMAG)
+#define BLKMSK	(BLKRES-1)
 
 #if defined(STOREFP16)
 typedef __half value_t;
@@ -25,8 +26,8 @@ void osino_classifyfield
 )
 {
 	const int zc = threadIdx.x;
-	const int yc = blockIdx.x & 0xff;
-	const int xc = (blockIdx.x >> 8);
+	const int yc = blockIdx.x & BLKMSK;
+	const int xc = (blockIdx.x >> BLKMAG);
 
 	const int i0 = zc + yc*BLKRES + xc*BLKRES*BLKRES;
 	//assert(i0 < BLKRES*BLKRES*BLKRES);
@@ -91,8 +92,8 @@ __global__
 void osino_setupfield(value_t* field)
 {
 	const int zc = threadIdx.x;
-	const int yc = blockIdx.x & 0xff;
-	const int xc = (blockIdx.x >> 8);
+	const int yc = blockIdx.x & BLKMSK;
+	const int xc = (blockIdx.x >> BLKMAG);
 
 	const int i0 = zc + yc*BLKRES + xc*BLKRES*BLKRES;
 
@@ -140,7 +141,7 @@ int main(int argc, char* argv[])
 {
 	query();
 
-	const int N = 256*256*256;
+	const int N = BLKRES*BLKRES*BLKRES;
 
 	value_t* field = 0;
 	cudaMallocManaged(&field, N*sizeof(value_t));
@@ -164,7 +165,7 @@ int main(int argc, char* argv[])
 	FILE* f = fopen("out_classify.pgm","wb");
 	fprintf(f, "P5\n%d %d\n255\n", BLKRES, BLKRES);
 	const uint8_t* reader = cases + (BLKRES/2)*BLKRES*BLKRES;
-	for (int i=0; i<256*256; ++i)
+	for (int i=0; i<BLKRES*BLKRES; ++i)
 		fputc(reader[i],f);
 	fclose(f);
 

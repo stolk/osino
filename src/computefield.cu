@@ -25,6 +25,7 @@
 #endif
 
 #define BLKRES	(1<<BLKMAG)
+#define BLKMSK	(BLKRES-1)
 
 
 // Skewing / Unskewing factors for 2, 3, and 4 dimensions.
@@ -306,8 +307,12 @@ void osino_computematter
 )
 {
 	const int zc = threadIdx.x;
-	const int yc = blockIdx.x & 0xff;
-	const int xc = (blockIdx.x >> 8);
+	const int yc = blockIdx.x & BLKMSK;
+	const int xc = (blockIdx.x >> BLKMAG);
+
+	//assert(xc<BLKRES);
+	//assert(yc<BLKRES);
+	//assert(zc<BLKRES);
 
 	const float ifull = 1.0f / fullgridsz;
 	const float s0 = 2.017f * ifull;
@@ -360,8 +365,8 @@ void osino_computefield
 )
 {
 	const int zc = threadIdx.x;
-	const int yc = blockIdx.x & 0xff;
-	const int xc = (blockIdx.x >> 8);
+	const int yc = blockIdx.x & BLKMSK;
+	const int xc = (blockIdx.x >> BLKMAG);
 
 	const float ifull = 1.0f / fullgridsz;
 	const float s0 = 2.017f * ifull;
