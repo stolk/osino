@@ -554,11 +554,33 @@ static inline int mc_process_case_instances
 			}
 		}
 
+		
+
 		// Determine the triangles (up to five per cube).
 		for ( int tria=0; tria<5; ++tria )
 		{
 			if ( triangle_connection_table[ caseidx ][ 3*tria ] < 0 )
 				break;
+#if 1
+			// Sanity check: no incident vertices.
+			const int iA = triangle_connection_table[ caseidx ][ 3*tria+0 ];
+			const int iB = triangle_connection_table[ caseidx ][ 3*tria+1 ];
+			const int iC = triangle_connection_table[ caseidx ][ 3*tria+2 ];
+			assert(iA!=iB && iB!=iC && iA!=iC);
+			const float* vA = edge_verts[ iA ];
+			const float* vB = edge_verts[ iB ];
+			const float* vC = edge_verts[ iC ];
+			const float dA[3] = { vB[0]-vA[0], vB[1]-vA[1], vB[2]-vA[2] };
+			const float dB[3] = { vC[0]-vB[0], vC[1]-vB[1], vC[2]-vB[2] };
+			const float dC[3] = { vA[0]-vC[0], vA[1]-vC[1], vA[2]-vC[2] };
+			const float lsA = dA[0]*dA[0] + dA[1]*dA[1] + dA[2]*dA[2];
+			const float lsB = dB[0]*dB[0] + dB[1]*dB[1] + dB[2]*dB[2];
+			const float lsC = dC[0]*dC[0] + dC[1]*dC[1] + dC[2]*dC[2];
+			assert(lsA>0);
+			assert(lsB>0);
+			assert(lsC>0);
+#endif
+
 			for ( int corner=0; corner<3; ++corner )
 			{
 				int vert = triangle_connection_table[ caseidx ][ 3*tria+corner ];
