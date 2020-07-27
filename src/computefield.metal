@@ -1,6 +1,8 @@
 #include <metal_math>
 #include <metal_assert>
 
+#define BLKMAG  8
+#define	BLKRES	(1<<BLKMAG)
 
 
 // Skewing / Unskewing factors for 2, 3, and 4 dimensions.
@@ -251,6 +253,7 @@ float osino_3d_4o( float x, float y, float z, float lacunarity, float persistenc
 
 struct GridParams
 {
+    int stride;
     int gridoff_x;
     int gridoff_y;
     int gridoff_z;
@@ -292,25 +295,21 @@ void osino_computefield
     uint3 index [[thread_position_in_grid]]
 )
 {
-    const int zc = index[2];
-    const int yc = index[1];
-    const int xc = index[0];
+	const int zc = index[2];
+	const int yc = index[1];
+	const int xc = index[0];
 	const float ifull = 1.0f / gridparams.fullgridsz;
 	const float s0 = 2.017f * ifull;
 	const float s1 = 2.053f * ifull;
 	const float s2 = 2.099f * ifull;
-	float x = ( (xc+gridparams.gridoff_x) - 0.5f*gridparams.fullgridsz ) * s0;
-	float y = ( (yc+gridparams.gridoff_y) - 0.5f*gridparams.fullgridsz ) * s1;
-	float z = ( (zc+gridparams.gridoff_z) - 0.5f*gridparams.fullgridsz ) * s2;
-#if 0
-    field[ xc*256*256 + yc*256 + zc ] = osino_3d(x,y,z);
-    return;
-#endif
-    
+	float x = ( (xc*gridparams.stride+gridparams.gridoff_x) - 0.5f*gridparams.fullgridsz ) * s0;
+	float y = ( (yc*gridparams.stride+gridparams.gridoff_y) - 0.5f*gridparams.fullgridsz ) * s1;
+	float z = ( (zc*gridparams.stride+gridparams.gridoff_z) - 0.5f*gridparams.fullgridsz ) * s2;
+
 #if 1
 	const float lsq_unwarped = x*x + y*y + z*z; // 0 .. 0.25
 	const float depth = 0.25f - lsq_unwarped;
-    const float clippeddepth = metal::fmax(depth, 0.0f);
+	const float clippeddepth = metal::fmax(depth, 0.0f);
 	const float warpstrength = noiseparams.domainwarp * (0.5 + clippeddepth * 10.0f);
 	const float wx = osino_3d(noiseparams.offset_x+11+y, noiseparams.offset_y+23-z, noiseparams.offset_z+17+x) * warpstrength;
 	const float wy = osino_3d(noiseparams.offset_x+19-z, noiseparams.offset_y+13+x, noiseparams.offset_z+11-y) * warpstrength;
@@ -320,34 +319,23 @@ void osino_computefield
 	z += wz;
 #endif
 	const float lsq = x*x + y*y + z*z;	// 0 .. 0.25
-    const float len = metal::sqrt(lsq);
+	const float len = metal::sqrt(lsq);
 	const float d = 2.0f - 4.0f * len;
 
-#if 1
 	const float v = osino_3d_4o
-    (
-     noiseparams.offset_x+noiseparams.freq*x,
-     noiseparams.offset_y+noiseparams.freq*y,
-     noiseparams.offset_z+noiseparams.freq*z,
-     noiseparams.lacunarity,
-     noiseparams.persistence
-    );
-#elif 0
-    const float v = osino_3d(x,y,z);
-#else
-    const float v = osino_3d
-    (
-     noiseparams.offset_x+noiseparams.freq*x,
-     noiseparams.offset_y+noiseparams.freq*y,
-     noiseparams.offset_z+noiseparams.freq*z
-     );
-#endif
+	(
+		noiseparams.offset_x+noiseparams.freq*x,
+		noiseparams.offset_y+noiseparams.freq*y,
+		noiseparams.offset_z+noiseparams.freq*z,
+		noiseparams.lacunarity,
+		noiseparams.persistence
+	);
 
-	const int idx = xc*256*256 + yc*256 + zc;
-    float result = v;  //v+d;
+	const int idx = xc*BLKRES*BLKRES + yc*BLKRES + zc;
+	float result = v;  //v+d;
 	result = result < -1 ? -1 : result;
 	result = result >  1 ?  1 : result;
 
-    field[ idx ] = result;
+	field[ idx ] = result;
 }
 
