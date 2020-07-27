@@ -169,9 +169,10 @@ void osino_client_init(void)
 }
 
 
+static int callcount=0;
+
 int osino_client_computefield(int stride, int gridoff[3], int fullgridsz, float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
 {
-	static int callcount=0;
 	const int slot = callcount++ % NUMSTREAMS;
 
 	void* kernelParms[] =
@@ -210,7 +211,6 @@ int osino_client_computefield(int stride, int gridoff[3], int fullgridsz, float 
 
 int osino_client_computematter(int stride, int gridoff[3], int fullgridsz, float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
 {
-	static int callcount=0;
 	const int slot = callcount++ % NUMSTREAMS;
 
 	void* kernelParms[] =
