@@ -41,6 +41,8 @@
 typedef __half value_t;
 #elif defined(STORECHARS)
 typedef unsigned char value_t;
+#elif defined(STORESHORTS)
+typedef short value_t;
 #else
 typedef float value_t;
 #endif
@@ -341,6 +343,8 @@ void osino_computematter
 	float perturb = bluenoise[ xc&15 ][ yc&15 ][ zc&15 ];
 	//float perturb = honeycomb[ 0 ][ yc % 32 ][ xc % 48 ];
 	field[ idx ] = (value_t) ( 127 + 127 * result + perturb);
+#elif defined(STORESHORTS)
+	field[ idx ] = (value_t) ( result * 32767.0f );
 #elif defined(STOREFP16)
 	field[ idx ] = __float2half(result);
 #else
@@ -372,14 +376,15 @@ void osino_computefield
 	const float s0 = 2.017f * ifull;
 	const float s1 = 2.053f * ifull;
 	const float s2 = 2.099f * ifull;
-	float x = ( (xc*stride+gridoff_x) - 0.5f*fullgridsz ) * s0;
-	float y = ( (yc*stride+gridoff_y) - 0.5f*fullgridsz ) * s1;
-	float z = ( (zc*stride+gridoff_z) - 0.5f*fullgridsz ) * s2;
+	float x = ( (xc*stride+gridoff_x) - 0.5f*fullgridsz ) * s0;	// -1 .. 1
+	float y = ( (yc*stride+gridoff_y) - 0.5f*fullgridsz ) * s1;	// -1 .. 1
+	float z = ( (zc*stride+gridoff_z) - 0.5f*fullgridsz ) * s2;	// -1 .. 1
 #if 1
-	const float lsq_unwarped = x*x + y*y + z*z; // 0 .. 0.25
-	const float depth = 0.25f - lsq_unwarped;
-	const float clippeddepth = fmaxf(depth, 0.0f);
-	const float warpstrength = domainwarp * (0.5 + clippeddepth * 10.0f);
+	const float lsq_unwarped = x*x + y*y + z*z;	// 0 .. 3
+	const float len_unwarped = sqrtf(lsq_unwarped);
+	const float depth = 0.5f - len_unwarped;	// -0.5 .. 0.5
+	const float w = fmaxf( 0.25f - depth*depth, 0 );// 0 .. 0.25
+	const float warpstrength = domainwarp * (0.0 + w * 20.0f);
 	const float wx = osino_3d(offset_x+11+y, offset_y+23-z, offset_z+17+x) * warpstrength;
 	const float wy = osino_3d(offset_x+19-z, offset_y+13+x, offset_z+11-y) * warpstrength;
 	const float wz = osino_3d(offset_x+31+x, offset_y+41-z, offset_z+61+y) * warpstrength;
@@ -401,6 +406,8 @@ void osino_computefield
 	float perturb = bluenoise[ xc&15 ][ yc&15 ][ zc&15 ];
 	//float perturb = honeycomb[ 0 ][ yc % 32 ][ xc % 48 ];
 	field[ idx ] = (value_t) ( 127 + 127 * result + perturb);
+#elif defined(STORESHORTS)
+	field[ idx ] = (value_t) ( 32767.0f * result );
 #elif defined(STOREFP16)
 	field[ idx ] = __float2half(result);
 #else
@@ -497,6 +504,8 @@ int main(int argc, char* argv[])
                 fputc(128 + 127.999f*fv, f);
 #elif defined(STORECHARS)
 		fputc(im[i], f);
+#elif defined(STORESHORTS)
+		fputc( im[i] >> 8, f );
 #else
 		fputc(128 + 127.99f * im[i], f);
 #endif

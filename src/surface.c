@@ -456,6 +456,19 @@ static inline int mc_process_case_instances
 			scl*(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ]-128.0f),	// XYZ
 			scl*(fielddensity[ baseidx+BLKRES+1               ]-128.0f),	// xYZ
 		};
+#elif defined(STORESHORTS)
+		const float scl = 1/32767.0f;
+		const float corner_values[ 8 ] =
+		{
+			scl*(fielddensity[ baseidx+0                      ]),	// xyz
+			scl*(fielddensity[ baseidx+BLKRES*BLKRES          ]),	// Xyz
+			scl*(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES   ]),	// XYz
+			scl*(fielddensity[ baseidx+BLKRES                 ]),	// xYz
+			scl*(fielddensity[ baseidx+1                      ]),	// xyZ
+			scl*(fielddensity[ baseidx+BLKRES*BLKRES+1        ]),	// XyZ
+			scl*(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ]),	// XYZ
+			scl*(fielddensity[ baseidx+BLKRES+1               ]),	// xYZ
+		};
 #elif defined(STOREFP16)
 		const float corner_values[ 8 ] =
 		{
@@ -468,7 +481,7 @@ static inline int mc_process_case_instances
 			(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ]),	// XYZ
 			(fielddensity[ baseidx+BLKRES+1               ]),	// xYZ
 		};
-#else
+#elif defined(STORESHORTS)
 		const float corner_values[ 8 ] =
 		{
 			fielddensity[ baseidx+0 ],			// xyz
@@ -492,15 +505,20 @@ static inline int mc_process_case_instances
 
 			const int iprvx = i0 - stridex;
 			const int inxtx = i0 + stridex;
-			float dx = fielddensity[ inxtx ] - fielddensity[ iprvx ];
-
 			const int iprvy = i0 - stridey;
 			const int inxty = i0 + stridey;
-			float dy = fielddensity[ inxty ] - fielddensity[ iprvy ];
-
 			const int iprvz = i0 - stridez;
 			const int inxtz = i0 + stridez;
+
+#if defined(STOREFP16)
+			float dx = fielddensity[ inxtx ] - fielddensity[ iprvx ];
+			float dy = fielddensity[ inxty ] - fielddensity[ iprvy ];
 			float dz = fielddensity[ inxtz ] - fielddensity[ iprvz ];
+#elif defined(STORESHORTS)
+			float dx = (1/32767.0f)*(fielddensity[ inxtx ] - fielddensity[ iprvx ]);
+			float dy = (1/32767.0f)*(fielddensity[ inxty ] - fielddensity[ iprvy ]);
+			float dz = (1/32767.0f)*(fielddensity[ inxtz ] - fielddensity[ iprvz ]);
+#endif
 
 #if 0
 			const float th = 1.5f;
@@ -522,7 +540,14 @@ static inline int mc_process_case_instances
 		// Determine the corner materials
 		float corner_materials[ 8 ];
 		for ( int i=0; i<8; ++i )
-			corner_materials[ i ] = fieldtype[ corner_idx[ i ] ];
+		{
+#if defined(STOREFP16)
+			const float v = fieldtype[ corner_idx[ i ] ];
+#elif defined(STORESHORTS)
+			const float v = scl * fieldtype[ corner_idx[ i ] ];
+#endif
+			corner_materials[ i ] = v;
+		}
 
 		// Determine the vertices.
 		float edge_verts[ 12 ][ 3 ];
@@ -758,6 +783,7 @@ void osino_reclassifyfield
 
 			for (int z=zlo; z<zhi; ++z)
 			{
+#if defined(STOREFP16)
 				const float v0 = *f0++;
 				const float v1 = *f1++;
 				const float v2 = *f2++;
@@ -766,6 +792,17 @@ void osino_reclassifyfield
 				const float v5 = *f5++;
 				const float v6 = *f6++;
 				const float v7 = *f7++;
+#elif defined(STORESHORTS)
+				const float scl = 1/32767.0f;
+				const float v0 = scl*( *f0++ );
+				const float v1 = scl*( *f1++ );
+				const float v2 = scl*( *f2++ );
+				const float v3 = scl*( *f3++ );
+				const float v4 = scl*( *f4++ );
+				const float v5 = scl*( *f5++ );
+				const float v6 = scl*( *f6++ );
+				const float v7 = scl*( *f7++ );
+#endif
 				const int bit0 = v0 <= isoval ? 0x01 : 0;
 				const int bit1 = v1 <= isoval ? 0x02 : 0;
 				const int bit2 = v2 <= isoval ? 0x04 : 0;

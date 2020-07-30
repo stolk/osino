@@ -10,6 +10,8 @@
 typedef __half value_t;
 #elif defined(STORECHARS)
 typedef unsigned char value_t;
+#elif defined(STORESHORTS)
+typedef short value_t;
 #else
 typedef float value_t;
 #endif
@@ -55,6 +57,16 @@ void osino_classifyfield
 	const float v5 = -1.0f + field[i5]*scl;
 	const float v6 = -1.0f + field[i6]*scl;
 	const float v7 = -1.0f + field[i7]*scl;
+#elif defined(STORESHORTS)
+	const float scl = (1/32767.0f);
+	const float v0 = field[i0]*scl;
+	const float v1 = field[i1]*scl;
+	const float v2 = field[i2]*scl;
+	const float v3 = field[i3]*scl;
+	const float v4 = field[i4]*scl;
+	const float v5 = field[i5]*scl;
+	const float v6 = field[i6]*scl;
+	const float v7 = field[i7]*scl;
 #elif defined(STOREFP16)
 	const float v0 = __half2float(field[i0]);
 	const float v1 = __half2float(field[i1]);
@@ -100,8 +112,15 @@ void osino_setupfield(value_t* field)
 	float x = 0.5f * BLKRES - xc;
 	float y = 0.5f * BLKRES - yc;
 	float z = 0.5f * BLKRES - zc;
-	float d = sqrtf(x*x + y*y + z*z);
+	const float scl = 2.0f / BLKRES;
+	float d = sqrtf(x*x + y*y + z*z) * scl;
+#if defined(STOREFP16)
 	field[i0] = __float2half(d);
+#elif defined(STORESHORTS)
+	d = d < -1 ? -1 : d;
+	d = d >  1 ?  1 : d;
+	field[i0] = (value_t) (d * 32767.0f);
+#endif
 }
 
 
@@ -156,7 +175,7 @@ int main(int argc, char* argv[])
 	osino_setupfield<<<BLKRES*BLKRES,BLKRES>>>( field );
 	CHECK_CUDA
 
-	osino_classifyfield<<<BLKRES*BLKRES,BLKRES>>>( 100.0f, field, cases );
+	osino_classifyfield<<<BLKRES*BLKRES,BLKRES>>>( 0.8f, field, cases );
 	CHECK_CUDA
 
 	cudaDeviceSynchronize();

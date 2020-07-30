@@ -12,6 +12,8 @@
 typedef __fp16 value_t;	// __half is unknown, CPU-side, so we use __fp16
 #elif defined(STORECHARS)
 typedef unsigned char value_t;
+#elif defined(STORESHORTS)
+typedef short value_t;
 #else
 typedef float value_t;
 #endif
