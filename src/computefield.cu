@@ -323,28 +323,24 @@ void osino_computematter
 	float x = ( (xc*stride+gridoff_x) - 0.5f*fullgridsz ) * s0;
 	float y = ( (yc*stride+gridoff_y) - 0.5f*fullgridsz ) * s1;
 	float z = ( (zc*stride+gridoff_z) - 0.5f*fullgridsz ) * s2;
-#if 1
-	const float lsq_unwarped = x*x + y*y + z*z; // 0 .. 0.25
-	const float depth = 0.25f - lsq_unwarped;
-	const float clippeddepth = fmaxf(depth, 0.0f);
-	const float warpstrength = domainwarp * (0.5 + clippeddepth * 10.0f);
+
+	const float warpstrength = domainwarp;
 	const float wx = osino_3d(offset_x+11+y, offset_y+23-z, offset_z+17+x) * warpstrength;
 	const float wy = osino_3d(offset_x+19-z, offset_y+13+x, offset_z+11-y) * warpstrength;
 	const float wz = osino_3d(offset_x+31+x, offset_y+41-z, offset_z+61+y) * warpstrength;
 	x += wx;
 	y += wy;
 	z += wz;
-#endif
+
 	const int idx = (xc * (BLKRES*BLKRES)) + (yc*BLKRES) + zc;
 	float result = osino_3d_4o(offset_x+freq*x,offset_y+freq*y,offset_z+freq*z,lacunarity,persistence);
 	result = result < -1 ? -1 : result;
 	result = result >  1 ?  1 : result;
 #if defined(STORECHARS)
 	float perturb = bluenoise[ xc&15 ][ yc&15 ][ zc&15 ];
-	//float perturb = honeycomb[ 0 ][ yc % 32 ][ xc % 48 ];
 	field[ idx ] = (value_t) ( 127 + 127 * result + perturb);
 #elif defined(STORESHORTS)
-	field[ idx ] = (value_t) ( result * 32767.0f );
+	field[ idx ] = ( ((value_t) ( result * 32767.0f )) & 0xfff0 );
 #elif defined(STOREFP16)
 	field[ idx ] = __float2half(result);
 #else
@@ -404,10 +400,9 @@ void osino_computefield
 	result = result >  1 ?  1 : result;
 #if defined(STORECHARS)
 	float perturb = bluenoise[ xc&15 ][ yc&15 ][ zc&15 ];
-	//float perturb = honeycomb[ 0 ][ yc % 32 ][ xc % 48 ];
 	field[ idx ] = (value_t) ( 127 + 127 * result + perturb);
 #elif defined(STORESHORTS)
-	field[ idx ] = (value_t) ( 32767.0f * result );
+	field[ idx ] = ( ((value_t) ( result * 32767.0f )) & 0xfff0 );
 #elif defined(STOREFP16)
 	field[ idx ] = __float2half(result);
 #else
