@@ -312,10 +312,6 @@ void osino_computematter
 	const int yc = blockIdx.x & BLKMSK;
 	const int xc = (blockIdx.x >> BLKMAG);
 
-	//assert(xc<BLKRES);
-	//assert(yc<BLKRES);
-	//assert(zc<BLKRES);
-
 	const float ifull = 1.0f / fullgridsz;
 	const float s0 = 2.017f * ifull;
 	const float s1 = 2.053f * ifull;
@@ -333,7 +329,7 @@ void osino_computematter
 	z += wz;
 
 	const int idx = (xc * (BLKRES*BLKRES)) + (yc*BLKRES) + zc;
-	float result = osino_3d_4o(offset_x+freq*x,offset_y+freq*y,offset_z+freq*z,lacunarity,persistence);
+	float result = osino_3d_4o(offset_x+freq*x, offset_y+freq*y, offset_z+freq*z, lacunarity, persistence);
 	result = result < -1 ? -1 : result;
 	result = result >  1 ?  1 : result;
 #if defined(STORECHARS)
@@ -483,13 +479,14 @@ int main(int argc, char* argv[])
 
 	CHECK_CUDA
 
-	osino_computefield<<<BLKRES*BLKRES,BLKRES>>>(field, 1, 0,0,0, BLKRES, 0,0,0, 1.0f, 1.0f, 0.5f, 0.5f );
+//	osino_computefield<<<BLKRES*BLKRES,BLKRES>>>(field, 1, 0,0,0, BLKRES, 0,0,0, 1.0f, 1.0f, 0.5f, 0.5f );
+	osino_computematter<<<BLKRES*BLKRES,BLKRES>>>(field, 1, 0,0,0, BLKRES, 0,0,0, 1.0f, 1.0f, 0.5f, 0.5f );
 
 	cudaDeviceSynchronize();
 	CHECK_CUDA
 
 	const value_t* im = field + (BLKRES/2)*BLKRES*BLKRES;
-	FILE* f = fopen("out_compute.pgm","wb");
+	FILE* f = fopen("out_computematter.pgm","wb");
 	fprintf(f, "P5\n%d %d\n255\n", BLKRES, BLKRES);
 	for (int i=0; i<BLKRES*BLKRES; ++i)
 	{

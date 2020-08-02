@@ -544,7 +544,7 @@ static inline int mc_process_case_instances
 #if defined(STOREFP16)
 			const float v = fieldtype[ corner_idx[ i ] ];
 #elif defined(STORESHORTS)
-			const float v = scl * fieldtype[ corner_idx[ i ] ];
+			const float v = (1/32767.0f) * fieldtype[ corner_idx[ i ] ];
 #endif
 			corner_materials[ i ] = v;
 		}

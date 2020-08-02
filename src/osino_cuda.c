@@ -21,7 +21,8 @@
 static CUdevice device;
 static CUcontext context;
 
-static CUmodule module_compute;
+static CUmodule module_computefield;
+//static CUmodule module_computematter;
 static CUmodule module_classify;
 
 static CUfunction function_computefield;
@@ -91,23 +92,25 @@ void osino_client_init(void)
 
 	// compute
 
-	const char* ptxname = "computefield.ptx";
+	const char* ptxname  = "computefield.ptx";
+	const char* ptxname1 = "computefield.ptx";
+
 	const char* funname0 = "osino_computefield";
 	const char* funname1 = "osino_computematter";
 
-	moduleLoadResult = cuModuleLoad(&module_compute, ptxname);
+	moduleLoadResult = cuModuleLoad(&module_computefield, ptxname);
 	if (moduleLoadResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuModuleLoad error: 0x%x (%s)\n", moduleLoadResult, cudaResultName(moduleLoadResult));
 	assert(moduleLoadResult == CUDA_SUCCESS);
 	CHECK_CUDA
 
-	getFunctionResult = cuModuleGetFunction(&function_computefield, module_compute, funname0);
+	getFunctionResult = cuModuleGetFunction(&function_computefield, module_computefield, funname0);
 	if (getFunctionResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuModulkeGetFunction error: 0x%x (%s)\n", getFunctionResult, cudaResultName(getFunctionResult));
 	assert(getFunctionResult == CUDA_SUCCESS);
 	CHECK_CUDA
 
-	getFunctionResult = cuModuleGetFunction(&function_computematter, module_compute, funname1);
+	getFunctionResult = cuModuleGetFunction(&function_computematter, module_computefield, funname1);
 	if (getFunctionResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuModulkeGetFunction error: 0x%x (%s)\n", getFunctionResult, cudaResultName(getFunctionResult));
 	assert(getFunctionResult == CUDA_SUCCESS);
@@ -205,6 +208,7 @@ int osino_client_computefield(int stride, int gridoff[3], int fullgridsz, float 
 	if (launchResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuLaunchKernel error: 0x%x (%s)\n", launchResult, cudaResultName(launchResult));
 	assert(launchResult == CUDA_SUCCESS);
+	fprintf(stderr,"Executed kernel computematter in slot %d 1st\n", slot);
 	return slot;
 }
 
@@ -243,6 +247,7 @@ int osino_client_computematter(int stride, int gridoff[3], int fullgridsz, float
 	if (launchResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuLaunchKernel error: 0x%x (%s)\n", launchResult, cudaResultName(launchResult));
 	assert(launchResult == CUDA_SUCCESS);
+	fprintf(stderr,"Executed kernel computematter in slot %d 2nd\n", slot);
 	return slot;
 }
 
@@ -282,7 +287,7 @@ void osino_client_sync(int slot)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"streamsync0", "streamsync1", "streamsync2",
+		"streamsync0", "streamsync1", "streamsync2", "streamsync3",
 	};
 	assert(slot>=0 && slot<NUMSTREAMS);
 	TT_BEGIN(tags[slot]);
@@ -296,7 +301,7 @@ void osino_client_stagecases(int slot)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"asynccopy0_c", "asynccopy1_c", "asynccopy2_c",
+		"asynccopy0_c", "asynccopy1_c", "asynccopy2_c", "asynccopy3_c",
 	};
 
 	assert(slot>=0 && slot<NUMSTREAMS);
@@ -316,7 +321,7 @@ void osino_client_stagefield(int slot)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"asynccopy0_f", "asynccopy1_f", "asynccopy2_f",
+		"asynccopy0_f", "asynccopy1_f", "asynccopy2_f", "asynccopy3_f",
 	};
 
 	assert(slot>=0 && slot<NUMSTREAMS);
@@ -336,7 +341,7 @@ void osino_client_collectfield(int slot, value_t* output)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"memcpy0_f", "memcpy1_f", "memcpy2_f",
+		"memcpy0_f", "memcpy1_f", "memcpy2_f", "memcpy3_f",
 	};
 
 	TT_BEGIN(tags[slot]);
@@ -349,7 +354,7 @@ void osino_client_collectcases(int slot, uint8_t* output)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"memcpy0_c", "memcpy1_c", "memcpy2_c",
+		"memcpy0_c", "memcpy1_c", "memcpy2_c", "memcpy3_c",
 	};
 
 	TT_BEGIN(tags[slot]);

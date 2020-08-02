@@ -13,13 +13,13 @@ typedef signed short value_t;
 typedef float value_t;
 #endif
 
-#define NUMSTREAMS 3
+#define NUMSTREAMS 4
 
 extern void osino_client_init(void);
 
 extern void osino_client_sync(int slot);
 
-extern int  osino_client_computefield(int stride, int gridOff[3], int fullres, float offsets[3], float domainwarp, float freq, float lacunarity, float persistence);
+extern int  osino_client_computefield (int stride, int gridOff[3], int fullres, float offsets[3], float domainwarp, float freq, float lacunarity, float persistence);
 extern int  osino_client_computematter(int stride, int gridOff[3], int fullres, float offsets[3], float domainwarp, float freq, float lacunarity, float persistence);
 
 extern void osino_client_classifyfield(int slot, float isoval);
