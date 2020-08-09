@@ -22,7 +22,7 @@ extern void osino_client_sync(int slot);
 extern int  osino_client_computefield (int stride, int gridOff[3], int fullres, float offsets[3], float domainwarp, float freq, float lacunarity, float persistence);
 extern int  osino_client_computematter(int stride, int gridOff[3], int fullres, float offsets[3], float domainwarp, float freq, float lacunarity, float persistence);
 
-extern void osino_client_classifyfield(int slot, float isoval);
+extern void osino_client_classifyfield(int slot, value_t isoval);
 
 extern void osino_client_stagefield(int slot);
 extern void osino_client_stagecases(int slot);

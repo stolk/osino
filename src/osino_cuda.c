@@ -255,7 +255,7 @@ int osino_client_computematter(int stride, int gridoff[3], int fullgridsz, float
 void osino_client_classifyfield
 (
 	int slot, 
-	float isoval
+	value_t isoval
 )
 {
 	void* kernelParms[] =

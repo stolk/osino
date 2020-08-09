@@ -28,7 +28,7 @@ extern int surface_extract_cases
 	const value_t* __restrict__ fielddensity,	// density field.
 	const value_t* __restrict__ fieldtype,		// materials.
 	const uint8_t* __restrict__ cases,
-	float isoval,					// iso value that separates volumes.
+	value_t isoval,					// iso value that separates volumes.
 	const int* __restrict__ gridoff,
 	int xlo,					// x-range
 	int xhi,
@@ -47,7 +47,7 @@ extern int surface_extract_cases
 // Reclassify a subsector of the field.
 void osino_reclassifyfield
 (
-	float isoval,
+	value_t isoval,
 	const value_t* field,
 	uint8_t* cases,
 	int xlo,

@@ -22,7 +22,7 @@ extern "C"
 __global__
 void osino_classifyfield
 (
-	float isoval,
+	value_t isoval,
 	const value_t* field,
 	uint8_t* cases
 )
@@ -58,15 +58,14 @@ void osino_classifyfield
 	const float v6 = -1.0f + field[i6]*scl;
 	const float v7 = -1.0f + field[i7]*scl;
 #elif defined(STORESHORTS)
-	const float scl = (1/32767.0f);
-	const float v0 = field[i0]*scl;
-	const float v1 = field[i1]*scl;
-	const float v2 = field[i2]*scl;
-	const float v3 = field[i3]*scl;
-	const float v4 = field[i4]*scl;
-	const float v5 = field[i5]*scl;
-	const float v6 = field[i6]*scl;
-	const float v7 = field[i7]*scl;
+	const value_t v0 = field[i0];
+	const value_t v1 = field[i1];
+	const value_t v2 = field[i2];
+	const value_t v3 = field[i3];
+	const value_t v4 = field[i4];
+	const value_t v5 = field[i5];
+	const value_t v6 = field[i6];
+	const value_t v7 = field[i7];
 #elif defined(STOREFP16)
 	const float v0 = __half2float(field[i0]);
 	const float v1 = __half2float(field[i1]);
@@ -175,7 +174,7 @@ int main(int argc, char* argv[])
 	osino_setupfield<<<BLKRES*BLKRES,BLKRES>>>( field );
 	CHECK_CUDA
 
-	osino_classifyfield<<<BLKRES*BLKRES,BLKRES>>>( 0.8f, field, cases );
+	osino_classifyfield<<<BLKRES*BLKRES,BLKRES>>>( 28000, field, cases );
 	CHECK_CUDA
 
 	cudaDeviceSynchronize();

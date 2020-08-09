@@ -381,15 +381,14 @@ __m256 gather_fp16(__fp16 const* fielddensity, __m256i indices)
 
 
 // Finds the approximate point of intersection of the surface between two points with the values fValue1 and fValue2.
-static __inline float get_offset( float fValue1, float fValue2, float fValueDesired)
+static __inline float get_offset( value_t fValue1, value_t fValue2, value_t fValueDesired)
 {
-	float fDelta = fValue2 - fValue1;
-	if ( fDelta == 0.0f )
+	value_t fDelta = fValue2 - fValue1;
+	if ( fDelta == 0 )
 		return 0.5f;
-	float o = ( fValueDesired - fValue1) / fDelta;
-	const float lo = 0.04f;
-	const float hi = 1.0f - lo;
-	return ( o < lo ) ? lo : ( o > hi ? hi : o );
+	float o = ( fValueDesired - fValue1 ) / (float) fDelta;
+	// NOTE: if it returns 0 or 1, it could generate degenerate triangles. But that is OK. We will filter them out.
+	return o;
 }
 
 #if USESIMD
@@ -407,7 +406,7 @@ static inline int mc_process_case_instances
 	int* cases,
  	const value_t* __restrict__ fielddensity,
 	const value_t* __restrict__ fieldtype,
-	float isoval,
+	value_t isoval,
  	float* __restrict__ outputv,	// vertices
  	float* __restrict__ outputn,	// normals
 	float* __restrict__ outputm	// materials
@@ -457,17 +456,17 @@ static inline int mc_process_case_instances
 			scl*(fielddensity[ baseidx+BLKRES+1               ]-128.0f),	// xYZ
 		};
 #elif defined(STORESHORTS)
-		const float scl = 1/32767.0f;
-		const float corner_values[ 8 ] =
+		//const float scl = 1/32767.0f;
+		const value_t corner_values[ 8 ] =
 		{
-			scl*(fielddensity[ baseidx+0                      ]),	// xyz
-			scl*(fielddensity[ baseidx+BLKRES*BLKRES          ]),	// Xyz
-			scl*(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES   ]),	// XYz
-			scl*(fielddensity[ baseidx+BLKRES                 ]),	// xYz
-			scl*(fielddensity[ baseidx+1                      ]),	// xyZ
-			scl*(fielddensity[ baseidx+BLKRES*BLKRES+1        ]),	// XyZ
-			scl*(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ]),	// XYZ
-			scl*(fielddensity[ baseidx+BLKRES+1               ]),	// xYZ
+			(fielddensity[ baseidx+0                      ]),	// xyz
+			(fielddensity[ baseidx+BLKRES*BLKRES          ]),	// Xyz
+			(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES   ]),	// XYz
+			(fielddensity[ baseidx+BLKRES                 ]),	// xYz
+			(fielddensity[ baseidx+1                      ]),	// xyZ
+			(fielddensity[ baseidx+BLKRES*BLKRES+1        ]),	// XyZ
+			(fielddensity[ baseidx+BLKRES*BLKRES+BLKRES+1 ]),	// XYZ
+			(fielddensity[ baseidx+BLKRES+1               ]),	// xYZ
 		};
 #elif defined(STOREFP16)
 		const float corner_values[ 8 ] =
@@ -515,9 +514,9 @@ static inline int mc_process_case_instances
 			float dy = fielddensity[ inxty ] - fielddensity[ iprvy ];
 			float dz = fielddensity[ inxtz ] - fielddensity[ iprvz ];
 #elif defined(STORESHORTS)
-			float dx = (1/32767.0f)*(fielddensity[ inxtx ] - fielddensity[ iprvx ]);
-			float dy = (1/32767.0f)*(fielddensity[ inxty ] - fielddensity[ iprvy ]);
-			float dz = (1/32767.0f)*(fielddensity[ inxtz ] - fielddensity[ iprvz ]);
+			value_t dx = (fielddensity[ inxtx ] - fielddensity[ iprvx ]);
+			value_t dy = (fielddensity[ inxty ] - fielddensity[ iprvy ]);
+			value_t dz = (fielddensity[ inxtz ] - fielddensity[ iprvz ]);
 #endif
 
 #if 0
@@ -561,6 +560,7 @@ static inline int mc_process_case_instances
 				const int i1 = edge_connections[ edge ][ 1 ];
 				//printf( "edge from %d(%f) to %d(%f)\n", i0, corner_values[ i0 ], i1, corner_values[ i1 ] );
 				const float offs = get_offset( corner_values[ i0 ], corner_values[ i1 ], isoval );
+				//fprintf(stderr, "offs between %d and %d: %f\n", corner_values[i0], corner_values[i1], offs);
 				assert(offs>=0 && offs<=1);
 				edge_verts[ edge ][ 0 ] = x + vertex_offsets[ i0 ][ 0 ] + offs * edge_directions[ edge ][ 0 ];
 				edge_verts[ edge ][ 1 ] = y + vertex_offsets[ i0 ][ 1 ] + offs * edge_directions[ edge ][ 1 ];
@@ -586,7 +586,7 @@ static inline int mc_process_case_instances
 		{
 			if ( triangle_connection_table[ caseidx ][ 3*tria ] < 0 )
 				break;
-#if 0
+#if 1
 			// Sanity check: no incident vertices.
 			const int iA = triangle_connection_table[ caseidx ][ 3*tria+0 ];
 			const int iB = triangle_connection_table[ caseidx ][ 3*tria+1 ];
@@ -601,9 +601,12 @@ static inline int mc_process_case_instances
 			const float lsA = dA[0]*dA[0] + dA[1]*dA[1] + dA[2]*dA[2];
 			const float lsB = dB[0]*dB[0] + dB[1]*dB[1] + dB[2]*dB[2];
 			const float lsC = dC[0]*dC[0] + dC[1]*dC[1] + dC[2]*dC[2];
-			assert(lsA>0);
-			assert(lsB>0);
-			assert(lsC>0);
+			if (lsA<=0) continue;
+			if (lsB<=0) continue;
+			if (lsC<=0) continue;
+			//assert(lsA>0);
+			//assert(lsB>0);
+			//assert(lsC>0);
 #endif
 
 			for ( int corner=0; corner<3; ++corner )
@@ -671,7 +674,7 @@ int surface_extract_cases
 	const value_t* __restrict__ fielddensity,	// density field.
 	const value_t* __restrict__ fieldtype,		// material type.
 	const uint8_t* __restrict__ cases,
-	float isoval,					// iso value that separates volumes.
+	value_t isoval,					// iso value that separates volumes.
 	const int* __restrict__ gridoff,
 	int xlo,					// x-range
 	int xhi,
@@ -749,7 +752,7 @@ int surface_extract_cases
 
 void osino_reclassifyfield
 (
-	float isoval,
+	value_t isoval,
 	const value_t* field,
 	uint8_t* cases,
 	int xlo,
@@ -793,15 +796,14 @@ void osino_reclassifyfield
 				const float v6 = *f6++;
 				const float v7 = *f7++;
 #elif defined(STORESHORTS)
-				const float scl = 1/32767.0f;
-				const float v0 = scl*( *f0++ );
-				const float v1 = scl*( *f1++ );
-				const float v2 = scl*( *f2++ );
-				const float v3 = scl*( *f3++ );
-				const float v4 = scl*( *f4++ );
-				const float v5 = scl*( *f5++ );
-				const float v6 = scl*( *f6++ );
-				const float v7 = scl*( *f7++ );
+				const value_t v0 = ( *f0++ );
+				const value_t v1 = ( *f1++ );
+				const value_t v2 = ( *f2++ );
+				const value_t v3 = ( *f3++ );
+				const value_t v4 = ( *f4++ );
+				const value_t v5 = ( *f5++ );
+				const value_t v6 = ( *f6++ );
+				const value_t v7 = ( *f7++ );
 #endif
 				const int bit0 = v0 <= isoval ? 0x01 : 0;
 				const int bit1 = v1 <= isoval ? 0x02 : 0;
