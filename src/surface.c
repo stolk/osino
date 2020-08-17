@@ -381,12 +381,16 @@ __m256 gather_fp16(__fp16 const* fielddensity, __m256i indices)
 
 
 // Finds the approximate point of intersection of the surface between two points with the values fValue1 and fValue2.
-static __inline float get_offset( value_t fValue1, value_t fValue2, value_t fValueDesired)
+static __inline float get_offset( value_t val0, value_t val1, value_t desired)
 {
-	value_t fDelta = fValue2 - fValue1;
-	if ( fDelta == 0 )
+#if defined(STORESHORTS)
+	int delta = val1 - val0;
+#else
+	value_t delta = val1 - val0;
+#endif
+	if ( delta == 0 )
 		return 0.5f;
-	float o = ( fValueDesired - fValue1 ) / (float) fDelta;
+	float o = ( desired - val0 ) / (float) delta;
 	// NOTE: if it returns 0 or 1, it could generate degenerate triangles. But that is OK. We will filter them out.
 	return o;
 }
@@ -514,23 +518,21 @@ static inline int mc_process_case_instances
 			float dy = fielddensity[ inxty ] - fielddensity[ iprvy ];
 			float dz = fielddensity[ inxtz ] - fielddensity[ iprvz ];
 #elif defined(STORESHORTS)
-			value_t dx = (fielddensity[ inxtx ] - fielddensity[ iprvx ]);
-			value_t dy = (fielddensity[ inxty ] - fielddensity[ iprvy ]);
-			value_t dz = (fielddensity[ inxtz ] - fielddensity[ iprvz ]);
+			const int dx = (fielddensity[ inxtx ] - (int)fielddensity[ iprvx ]);
+			const int dy = (fielddensity[ inxty ] - (int)fielddensity[ iprvy ]);
+			const int dz = (fielddensity[ inxtz ] - (int)fielddensity[ iprvz ]);
 #endif
 
-#if 0
-			const float th = 1.5f;
-			dx = dx >  th ?  th : dx;
-			dx = dx < -th ? -th : dx;
-			dy = dy >  th ?  th : dy;
-			dy = dy < -th ? -th : dy;
-			dz = dz >  th ?  th : dz;
-			dz = dz < -th ? -th : dz;
-#endif
-
-			const float lensq = dx*dx + dy*dy + dz*dz;
-			const float invlen = lensq > FLT_EPSILON ? 1.0f / sqrtf(lensq) : 1.0f;
+			const float lensq = 1LL*dx*dx + 1LL*dy*dy + 1LL*dz*dz;
+			//const float lensq = dx*dx + dy*dy + dz*dz;
+			//fprintf(stderr,"%f, ", lensq);
+			//fflush(stderr);
+			float invlen = 1.0f;
+			if (lensq > FLT_EPSILON)
+			{
+				const float leng = sqrtf(lensq);
+				invlen = 1.0f / leng;
+			}
 			corner_normals[ i ][ 0 ] = -dx * invlen;
 			corner_normals[ i ][ 1 ] = -dy * invlen;
 			corner_normals[ i ][ 2 ] = -dz * invlen;
@@ -559,7 +561,14 @@ static inline int mc_process_case_instances
 				const int i0 = edge_connections[ edge ][ 0 ];
 				const int i1 = edge_connections[ edge ][ 1 ];
 				//printf( "edge from %d(%f) to %d(%f)\n", i0, corner_values[ i0 ], i1, corner_values[ i1 ] );
+#if 0
+				const int boundaryx = 
+					( x==1        && vertex_offsets[i0][0] == 0 && vertex_offsets[i1][0] == 0 ) ||
+					( x==BLKRES-3 && vertex_offsets[i0][0] == 1 && vertex_offsets[i1][0] == 1 );
+				const float offs = boundaryx ? 0.5f : get_offset( corner_values[ i0 ], corner_values[ i1 ], isoval );
+#else
 				const float offs = get_offset( corner_values[ i0 ], corner_values[ i1 ], isoval );
+#endif
 				//fprintf(stderr, "offs between %d and %d: %f\n", corner_values[i0], corner_values[i1], offs);
 				assert(offs>=0 && offs<=1);
 				edge_verts[ edge ][ 0 ] = x + vertex_offsets[ i0 ][ 0 ] + offs * edge_directions[ edge ][ 0 ];
