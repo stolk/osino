@@ -25,19 +25,19 @@ runcm: computematter
 
 
 computefieldfp16: computefieldfp16.cu
-	$(NVCC) $(NVCFLAGS) -DBLKMAG=7 $(STORAGEFLAGS) computefieldfp16.cu -o computefieldfp16
+	$(NVCC) $(NVCFLAGS) -DBLKMAG=6 $(STORAGEFLAGS) computefieldfp16.cu -o computefieldfp16
 
 computefield: computefield.cu
-	$(NVCC) $(NVCFLAGS) -DBLKMAG=7 $(STORAGEFLAGS) computefield.cu -o computefield
+	$(NVCC) $(NVCFLAGS) -DBLKMAG=6 $(STORAGEFLAGS) computefield.cu -o computefield
 
 computematter: computematter.cu
-	$(NVCC) $(NVCFLAGS) -DBLKMAG=7 $(STORAGEFLAGS) computematter.cu -o computematter
+	$(NVCC) $(NVCFLAGS) -DBLKMAG=6 $(STORAGEFLAGS) computematter.cu -o computematter
 
 classifyfield: classifyfield.cu
-	$(NVCC) $(NVCFLAGS) -DBLKMAG=7 $(STORAGEFLAGS) classifyfield.cu -o classifyfield
+	$(NVCC) $(NVCFLAGS) -DBLKMAG=6 $(STORAGEFLAGS) classifyfield.cu -o classifyfield
 
 intersectedges: intersectedges.cu
-	$(NVCC) $(NVCFLAGS) -DBLKMAG=7 $(STORAGEFLAGS) intersectedges.cu -o intersectedges
+	$(NVCC) $(NVCFLAGS) -DBLKMAG=6 $(STORAGEFLAGS) intersectedges.cu -o intersectedges
 
 testcase: testcase.cu
 	$(NVCC) testcase.cu -o testcase
