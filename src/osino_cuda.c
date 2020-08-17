@@ -208,7 +208,7 @@ int osino_client_computefield(int stride, int gridoff[3], int fullgridsz, float 
 	if (launchResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuLaunchKernel error: 0x%x (%s)\n", launchResult, cudaResultName(launchResult));
 	assert(launchResult == CUDA_SUCCESS);
-	fprintf(stderr,"Executed kernel computematter in slot %d 1st\n", slot);
+	fprintf(stderr,"Executed kernel computefield in slot %d 1st\n", slot);
 	return slot;
 }
 
@@ -287,7 +287,7 @@ void osino_client_sync(int slot)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"streamsync0", "streamsync1", "streamsync2", "streamsync3",
+		"streamsync0", "streamsync1", "streamsync2", "streamsync3", "streamsync4", "streamsync5",
 	};
 	assert(slot>=0 && slot<NUMSTREAMS);
 	TT_BEGIN(tags[slot]);
@@ -301,7 +301,7 @@ void osino_client_stagecases(int slot)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"asynccopy0_c", "asynccopy1_c", "asynccopy2_c", "asynccopy3_c",
+		"asynccopy0_c", "asynccopy1_c", "asynccopy2_c", "asynccopy3_c", "asynccopy4_c", "asynccopy5_c",
 	};
 
 	assert(slot>=0 && slot<NUMSTREAMS);
@@ -321,7 +321,7 @@ void osino_client_stagefield(int slot)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"asynccopy0_f", "asynccopy1_f", "asynccopy2_f", "asynccopy3_f",
+		"asynccopy0_f", "asynccopy1_f", "asynccopy2_f", "asynccopy3_f", "asyncopy4_f", "asynccopy5_f",
 	};
 
 	assert(slot>=0 && slot<NUMSTREAMS);
@@ -341,7 +341,7 @@ void osino_client_collectfield(int slot, value_t* output)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"memcpy0_f", "memcpy1_f", "memcpy2_f", "memcpy3_f",
+		"memcpy0_f", "memcpy1_f", "memcpy2_f", "memcpy3_f", "memcpy4_f", "memcpy5_f",
 	};
 
 	TT_BEGIN(tags[slot]);
@@ -354,7 +354,7 @@ void osino_client_collectcases(int slot, uint8_t* output)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"memcpy0_c", "memcpy1_c", "memcpy2_c", "memcpy3_c",
+		"memcpy0_c", "memcpy1_c", "memcpy2_c", "memcpy3_c", "memcpy4_c", "memcpy5_c",
 	};
 
 	TT_BEGIN(tags[slot]);

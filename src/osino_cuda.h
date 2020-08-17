@@ -13,7 +13,7 @@ typedef signed short value_t;
 typedef float value_t;
 #endif
 
-#define NUMSTREAMS 4
+#define NUMSTREAMS 6
 
 extern void osino_client_init(void);
 
