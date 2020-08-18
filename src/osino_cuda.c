@@ -173,10 +173,13 @@ void osino_client_init(void)
 
 
 static int callcount=0;
+static int usedcount=0;
 
 int osino_client_computefield(int stride, int gridoff[3], int fullgridsz, float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
 {
 	const int slot = callcount++ % NUMSTREAMS;
+	usedcount++;
+	assert(usedcount<NUMSTREAMS);
 
 	void* kernelParms[] =
 	{
@@ -216,6 +219,8 @@ int osino_client_computefield(int stride, int gridoff[3], int fullgridsz, float 
 int osino_client_computematter(int stride, int gridoff[3], int fullgridsz, float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
 {
 	const int slot = callcount++ % NUMSTREAMS;
+	usedcount++;
+	assert(usedcount<NUMSTREAMS);
 
 	void* kernelParms[] =
 	{
@@ -287,7 +292,8 @@ void osino_client_sync(int slot)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"streamsync0", "streamsync1", "streamsync2", "streamsync3", "streamsync4", "streamsync5",
+		"streamsync0", "streamsync1", "streamsync2", "streamsync3", "streamsync4", "streamsync5", "streamsync6", "streamsync7",
+		"streamsync8", "streamsync9", "streamsync10", "streamsync11", "streamsync12", "streamsync13", "streamsync14", "streamsync15",
 	};
 	assert(slot>=0 && slot<NUMSTREAMS);
 	TT_BEGIN(tags[slot]);
@@ -297,11 +303,19 @@ void osino_client_sync(int slot)
 }
 
 
+void osino_client_release(int slot)
+{
+	usedcount--;
+	assert(usedcount>=0);
+}
+
+
 void osino_client_stagecases(int slot)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"asynccopy0_c", "asynccopy1_c", "asynccopy2_c", "asynccopy3_c", "asynccopy4_c", "asynccopy5_c",
+		"asynccopy0_c", "asynccopy1_c", "asynccopy2_c", "asynccopy3_c", "asynccopy4_c", "asynccopy5_c", "asynccopy6_c", "asynccopy7_c",
+		"asynccopy8_c", "asynccopy9_c", "asynccopy10_c", "asynccopy11_c", "asynccopy12_c", "asynccopy13_c", "asynccopy14_c", "asynccopy15_c",
 	};
 
 	assert(slot>=0 && slot<NUMSTREAMS);
@@ -321,7 +335,8 @@ void osino_client_stagefield(int slot)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"asynccopy0_f", "asynccopy1_f", "asynccopy2_f", "asynccopy3_f", "asyncopy4_f", "asynccopy5_f",
+		"asynccopy0_f", "asynccopy1_f", "asynccopy2_f", "asynccopy3_f", "asyncopy4_f", "asynccopy5_f", "asynccopy6_f", "asynccopy7_f",
+		"asynccopy8_f", "asynccopy9_f", "asynccopy10_f", "asynccopy11_f", "asyncopy12_f", "asynccopy13_f", "asynccopy14_f", "asynccopy15_f",
 	};
 
 	assert(slot>=0 && slot<NUMSTREAMS);
@@ -341,7 +356,8 @@ void osino_client_collectfield(int slot, value_t* output)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"memcpy0_f", "memcpy1_f", "memcpy2_f", "memcpy3_f", "memcpy4_f", "memcpy5_f",
+		"memcpy0_f", "memcpy1_f", "memcpy2_f", "memcpy3_f", "memcpy4_f", "memcpy5_f", "memcpy6_f", "memcpy7_f",
+		"memcpy8_f", "memcpy9_f", "memcpy10_f", "memcpy11_f", "memcpy12_f", "memcpy13_f", "memcpy14_f", "memcpy15_f",
 	};
 
 	TT_BEGIN(tags[slot]);
@@ -354,7 +370,8 @@ void osino_client_collectcases(int slot, uint8_t* output)
 {
 	const char* tags[NUMSTREAMS] =
 	{
-		"memcpy0_c", "memcpy1_c", "memcpy2_c", "memcpy3_c", "memcpy4_c", "memcpy5_c",
+		"memcpy0_c", "memcpy1_c", "memcpy2_c", "memcpy3_c", "memcpy4_c", "memcpy5_c", "memcpy6_c", "memcpy7_c",
+		"memcpy8_c", "memcpy9_c", "memcpy10_c", "memcpy11_c", "memcpy12_c", "memcpy13_c", "memcpy14_c", "memcpy15_c",
 	};
 
 	TT_BEGIN(tags[slot]);
