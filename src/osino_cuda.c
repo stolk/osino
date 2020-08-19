@@ -257,7 +257,7 @@ int osino_client_computefield(int stride, int gridoff[3], int fullgridsz, float 
 	if (launchResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuLaunchKernel error: 0x%x (%s)\n", launchResult, cudaResultName(launchResult));
 	assert(launchResult == CUDA_SUCCESS);
-	fprintf(stderr,"Executed kernel computefield in slot %d 1st\n", slot);
+	//fprintf(stderr,"Executed kernel computefield in slot %d 1st\n", slot);
 	return slot;
 }
 
@@ -298,7 +298,7 @@ int osino_client_computematter(int stride, int gridoff[3], int fullgridsz, float
 	if (launchResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuLaunchKernel error: 0x%x (%s)\n", launchResult, cudaResultName(launchResult));
 	assert(launchResult == CUDA_SUCCESS);
-	fprintf(stderr,"Executed kernel computematter in slot %d 2nd\n", slot);
+	//fprintf(stderr,"Executed kernel computematter in slot %d 2nd\n", slot);
 	return slot;
 }
 
