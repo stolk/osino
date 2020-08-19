@@ -172,6 +172,49 @@ void osino_client_init(void)
 }
 
 
+void osino_client_exit(void)
+{
+	for (int s=0; s<NUMSTREAMS; ++s)
+	{
+		cudaError_t err;
+		CUresult freeResult;
+
+		err=cudaFreeHost(stagingareas_c[s]);
+		assert(err!=cudaErrorInvalidValue);
+		assert(err==cudaSuccess);
+		stagingareas_c[s] = 0;
+
+		assert(stagingareas_f[s]);
+		err=cudaFreeHost(stagingareas_f[s]);
+		assert(err!=cudaErrorInvalidValue);
+		assert(err==cudaSuccess);
+		stagingareas_f[s] = 0;
+
+		freeResult=cuMemFree(casesptrs[s]);
+		assert(freeResult == CUDA_SUCCESS);
+		casesptrs[s] = 0;
+
+		freeResult=cuMemFree(fieldptrs[s]);
+		assert(freeResult == CUDA_SUCCESS);
+		fieldptrs[s] = 0;
+
+		err = cudaStreamDestroy( streams[s] );
+		assert(err==cudaSuccess);
+	}
+
+	CUresult unloadResult;
+	unloadResult = cuModuleUnload( module_computefield );
+	assert(unloadResult == CUDA_SUCCESS);
+	unloadResult = cuModuleUnload( module_classify );
+	assert(unloadResult == CUDA_SUCCESS);
+
+	CUresult destroyResult;
+	destroyResult = cuCtxDestroy(context);
+	assert(destroyResult == CUDA_SUCCESS);
+	
+}
+
+
 static int callcount=0;
 static int usedcount=0;
 

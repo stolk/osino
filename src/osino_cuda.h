@@ -17,6 +17,8 @@ typedef float value_t;
 
 extern void osino_client_init(void);
 
+extern void osino_client_exit(void);
+
 //! Synchronize the cuda stream.
 extern void osino_client_sync(int slot);
 
