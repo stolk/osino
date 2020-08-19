@@ -68,6 +68,9 @@ static void pick_device(void)
 	CUresult deviceGetResult = cuDeviceGet(&device, 0);
 	if (deviceGetResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuDeviceGet error: 0x%x (%s)\n", deviceGetResult, cudaResultName(deviceGetResult));
+	size_t totalmem=0;
+	cuDeviceTotalMem(&totalmem, device);
+	fprintf(stderr,"Picked device with %lu MiB of memory.\n", totalmem / (1024*1024));
 }
 
 
