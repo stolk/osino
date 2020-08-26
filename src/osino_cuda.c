@@ -221,13 +221,22 @@ void osino_client_exit(void)
 static int callcount=0;
 static int usedcount=0;
 
-int osino_client_computefield(int stride, int gridoff[3], int fullgridsz, float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
+int osino_client_usage(void)
 {
+	return usedcount;
+}
+
+
+int osino_client_computefield(int stride, int gridoff[3], int fullgridsz, const float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
+{
+	assert(usedcount!=NUMSTREAMS);
+	if (usedcount==NUMSTREAMS)
+		return -1;	// We are at capacity! Try again later.
+
 	const int slot = callcount++ % NUMSTREAMS;
 	usedcount++;
-	assert(usedcount<NUMSTREAMS);
 
-	void* kernelParms[] =
+	const void* kernelParms[] =
 	{
 		fieldptrs+slot,
 		&stride,
@@ -251,7 +260,7 @@ int osino_client_computefield(int stride, int gridoff[3], int fullgridsz, float 
 		BLKRES,1,1,		// block dim
 		0,			// shared mem bytes
 		streams[slot],		// hStream
-		kernelParms,
+		(void**)kernelParms,
 		0			// extra
 	);
 	if (launchResult != CUDA_SUCCESS)
@@ -262,13 +271,16 @@ int osino_client_computefield(int stride, int gridoff[3], int fullgridsz, float 
 }
 
 
-int osino_client_computematter(int stride, int gridoff[3], int fullgridsz, float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
+int osino_client_computematter(int stride, int gridoff[3], int fullgridsz, const float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
 {
+	assert(usedcount!=NUMSTREAMS);
+	if (usedcount==NUMSTREAMS)
+		return -1;	// We are at capacity! Try again later.
+
 	const int slot = callcount++ % NUMSTREAMS;
 	usedcount++;
-	assert(usedcount<NUMSTREAMS);
 
-	void* kernelParms[] =
+	const void* kernelParms[] =
 	{
 		fieldptrs+slot,
 		&stride,
@@ -292,7 +304,7 @@ int osino_client_computematter(int stride, int gridoff[3], int fullgridsz, float
 		BLKRES,1,1,		// block dim
 		0,			// shared mem bytes
 		streams[slot],		// hStream
-		kernelParms,
+		(void*)kernelParms,
 		0			// extra
 	);
 	if (launchResult != CUDA_SUCCESS)
