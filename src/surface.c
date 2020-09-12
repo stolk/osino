@@ -13,7 +13,6 @@
 #include "threadtracer.h"
 #include "prtintrin.h"
 #include "hsv.h"
-#include "bluenoise.h"
 
 #include <assert.h>
 #include <math.h>
