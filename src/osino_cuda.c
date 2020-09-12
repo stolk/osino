@@ -76,7 +76,13 @@ static void pick_device(void)
 
 void osino_client_init(void)
 {
-	fprintf(stderr,"osino_cuda: value_t has size %lu\n", sizeof(value_t));
+	fprintf( stderr, "CUDA version: %d\n", CUDA_VERSION );
+	int driver_version = 0;
+	const CUresult versionResult = cuDriverGetVersion( &driver_version );
+	if ( versionResult != CUDA_SUCCESS )
+		fprintf( stderr, "Failed to get cuda driver version." );
+	else
+		fprintf( stderr, "CUDA driver version: %d\n", driver_version );
 
 	const CUresult initResult = cuInit(0);
 	if (initResult != CUDA_SUCCESS)
