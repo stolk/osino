@@ -45,20 +45,20 @@ static size_t preferred_multiple;		// Workgroup should be a multiple of this.
 { \
 	const char* s = clErrorString( err ); \
 	if ( err != CL_SUCCESS ) \
-		LOGE( "CL Error %s", s ); \
+		LOGE( "CL Error %s:%d %s", __FILE__, __LINE__, s ); \
 }
 
 
 static int callcount=0;
 static int usedcount=0;
 
-int osino_opencl_client_usage(void)
+int osino_opcl_client_usage(void)
 {
 	return usedcount;
 }
 
 
-void osino_opencl_client_release(int slot)
+void osino_opcl_client_release(int slot)
 {
 	usedcount--;
 	assert(usedcount>=0);
@@ -78,7 +78,7 @@ static void opencl_notify
 }
 
 
-int osino_opencl_client_init( void )
+int osino_opcl_client_init( void )
 {
 	cl_int err;
 
@@ -276,14 +276,14 @@ int osino_opencl_client_init( void )
 }
 
 
-void osino_opencl_client_sync(int slot)
+void osino_opcl_client_sync(int slot)
 {
 	cl_int err;
 	err = clFinish( queues[slot] );
 }
 
 
-int  osino_opencl_client_computefield (int stride, int gridOff[3], int fullres, const float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
+int  osino_opcl_client_computefield (int stride, int gridOff[3], int fullres, const float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
 {
 	ASSERT( usedcount != NUMSTREAMS );
 	const int slot = callcount++ % NUMSTREAMS;
@@ -320,11 +320,12 @@ int  osino_opencl_client_computefield (int stride, int gridOff[3], int fullres, 
 		NULL
 	);
 	CHECK_CL
+	if (err != CL_SUCCESS) LOGW("Failed to queue computefield kernel.");
 	return  slot;
 }
 
 
-void osino_opencl_client_stagefield(int slot)
+void osino_opcl_client_stagefield(int slot)
 {
 	// Trigger a transfer here!
 	cl_int err;
@@ -334,7 +335,7 @@ void osino_opencl_client_stagefield(int slot)
 }
 
 
-void osino_opencl_client_stagecases(int slot)
+void osino_opcl_client_stagecases(int slot)
 {
 	// Trigger a transfer here!
 	cl_int err;
@@ -344,38 +345,38 @@ void osino_opencl_client_stagecases(int slot)
 }
 
 
-void osino_opencl_client_collectfield(int slot, value_t* output)
+void osino_opcl_client_collectfield(int slot, value_t* output)
 {
 	memcpy( output, stagingareas_f[slot], fieldsize );
 }
 
 
-void osino_opencl_client_collectcases(int slot, uint8_t* output)
+void osino_opcl_client_collectcases(int slot, uint8_t* output)
 {
 	memcpy( output, stagingareas_c[slot], casessize );
 }
 
 
-extern int  osino_opencl_client_computematter(int stride, int gridOff[3], int fullres, const float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
+extern int  osino_opcl_client_computematter(int stride, int gridOff[3], int fullres, const float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
 {
 	ASSERT( usedcount != NUMSTREAMS );
 	const int slot = callcount++ % NUMSTREAMS;
 	usedcount++;
 
 	cl_int err;
-	err = clSetKernelArg( kernel_dens,  0, sizeof(cl_mem), fieldbufs+slot);	CHECK_CL
-	err = clSetKernelArg( kernel_dens,  1, sizeof(int),    &stride);	CHECK_CL
-	err = clSetKernelArg( kernel_dens,  2, sizeof(int),    gridOff+0);	CHECK_CL
-	err = clSetKernelArg( kernel_dens,  3, sizeof(int),    gridOff+1);	CHECK_CL
-	err = clSetKernelArg( kernel_dens,  4, sizeof(int),    gridOff+2);	CHECK_CL
-	err = clSetKernelArg( kernel_dens,  5, sizeof(int),    &fullres);	CHECK_CL
-	err = clSetKernelArg( kernel_dens,  6, sizeof(float),  offsets+0);	CHECK_CL
-	err = clSetKernelArg( kernel_dens,  7, sizeof(float),  offsets+1);	CHECK_CL
-	err = clSetKernelArg( kernel_dens,  8, sizeof(float),  offsets+2);	CHECK_CL
-	err = clSetKernelArg( kernel_dens,  9, sizeof(float),  &domainwarp);	CHECK_CL
-	err = clSetKernelArg( kernel_dens, 10, sizeof(float),  &freq);		CHECK_CL
-	err = clSetKernelArg( kernel_dens, 11, sizeof(float),  &lacunarity);	CHECK_CL
-	err = clSetKernelArg( kernel_dens, 12, sizeof(float),  &persistence);	CHECK_CL
+	err = clSetKernelArg( kernel_matt,  0, sizeof(cl_mem), fieldbufs+slot);	CHECK_CL
+	err = clSetKernelArg( kernel_matt,  1, sizeof(int),    &stride);	CHECK_CL
+	err = clSetKernelArg( kernel_matt,  2, sizeof(int),    gridOff+0);	CHECK_CL
+	err = clSetKernelArg( kernel_matt,  3, sizeof(int),    gridOff+1);	CHECK_CL
+	err = clSetKernelArg( kernel_matt,  4, sizeof(int),    gridOff+2);	CHECK_CL
+	err = clSetKernelArg( kernel_matt,  5, sizeof(int),    &fullres);	CHECK_CL
+	err = clSetKernelArg( kernel_matt,  6, sizeof(float),  offsets+0);	CHECK_CL
+	err = clSetKernelArg( kernel_matt,  7, sizeof(float),  offsets+1);	CHECK_CL
+	err = clSetKernelArg( kernel_matt,  8, sizeof(float),  offsets+2);	CHECK_CL
+	err = clSetKernelArg( kernel_matt,  9, sizeof(float),  &domainwarp);	CHECK_CL
+	err = clSetKernelArg( kernel_matt, 10, sizeof(float),  &freq);		CHECK_CL
+	err = clSetKernelArg( kernel_matt, 11, sizeof(float),  &lacunarity);	CHECK_CL
+	err = clSetKernelArg( kernel_matt, 12, sizeof(float),  &persistence);	CHECK_CL
 
 	size_t glb_sz = BLKSIZ;
 	size_t lcl_sz = workgroup_size;
@@ -392,11 +393,12 @@ extern int  osino_opencl_client_computematter(int stride, int gridOff[3], int fu
 		NULL
 	);
 	CHECK_CL
+	if (err != CL_SUCCESS) LOGW("Failed to queue computematter kernel.");
 	return slot;
 }
 
 
-void osino_opencl_client_classifyfield
+void osino_opcl_client_classifyfield
 (
 	int slot, 
 	value_t isoval
@@ -421,135 +423,11 @@ void osino_opencl_client_classifyfield
 		NULL
 	);
 	CHECK_CL
+	if (err != CL_SUCCESS) LOGW("Failed to queue classifyfield kernel.");
 }
 
-#if 0
-void emit_opencl_execute
-(
-	int num_lightsources,
-	int num_photons_per_source,
-	int num_voxels,
-	const float* __restrict__ lightsources8,
-	const float* __restrict__ minmax8,
-	unsigned int* __restrict__ indices
-)
-{
-	cl_int err;
 
-	const int icount = num_lightsources;
-	const int ocount = num_lightsources * num_photons_per_source;
-
-	seed = clCreateBuffer( context, CL_MEM_READ_ONLY,  sizeof(uint64_t) * 2 * icount, NULL, &err );
-	CHECK_CL
-
-	lsrc = clCreateBuffer( context, CL_MEM_READ_ONLY,  sizeof(float) * 3 * icount, NULL, &err );
-	CHECK_CL
-
-	mmax = clCreateBuffer( context, CL_MEM_READ_ONLY,  sizeof(float) * 6 * num_voxels, NULL, &err );
-	CHECK_CL
-
-	indc = clCreateBuffer( context, CL_MEM_WRITE_ONLY, sizeof(unsigned int) * ocount, NULL, &err );
-	CHECK_CL
-
-#if 0
-	isec = clCreateBuffer( context, CL_MEM_WRITE_ONLY, sizeof(float) * 3 * ocount, NULL, &err );
-	CHECK_CL
-#endif
-
-	ASSERT( seed );
-	ASSERT( lsrc );
-	ASSERT( mmax );
-	ASSERT( indc );
-//	ASSERT( isec );
-
-	uint64_t seeddata[ 2*icount ];
-	for ( int i=0; i<icount; ++i )
-	{
-		seeddata[ 2*i+0 ] = ( ( (uint64_t) rand() ) << 32 ) | ( ( ( uint64_t) rand() ) << 0 );
-		seeddata[ 2*i+1 ] = ( ( (uint64_t) rand() ) << 32 ) | ( ( ( uint64_t) rand() ) << 0 );
-	}
-
-	const cl_bool blocking_wr = CL_TRUE;
-
-	err = clEnqueueWriteBuffer( commands, seed, blocking_wr, 0, sizeof(uint64_t) * icount * 2, seeddata, 0, NULL, NULL);
-	CHECK_CL
-
-	err = clEnqueueWriteBuffer( commands, lsrc, blocking_wr, 0, sizeof(float) * icount * 3, lightsources8, 0, NULL, NULL);
-	CHECK_CL
-
-	err = clEnqueueWriteBuffer( commands, mmax, blocking_wr, 0, sizeof(float) * num_voxels * 6, minmax8, 0, NULL, NULL);
-	CHECK_CL
-
-	err = clSetKernelArg( kernel, 0, sizeof(int), &num_photons_per_source );
-	CHECK_CL
-	err = clSetKernelArg( kernel, 1, sizeof(int), &num_voxels );
-	CHECK_CL
-	err = clSetKernelArg( kernel, 2, sizeof(cl_mem), &seed );
-	CHECK_CL
-	err = clSetKernelArg( kernel, 3, sizeof(cl_mem), &lsrc );
-	CHECK_CL
-	err = clSetKernelArg( kernel, 4, sizeof(cl_mem), &mmax );
-	CHECK_CL
-	err = clSetKernelArg( kernel, 5, sizeof(cl_mem), &indc );
-	CHECK_CL
-#if 0
-	err = clSetKernelArg( kernel, 6, sizeof(cl_mem), &isec );
-	CHECK_CL
-#endif
-
-	size_t glb_sz = icount;
-	size_t lcl_sz = 64; //icount; //workgroup_size;
-	err = clEnqueueNDRangeKernel
-	(
-		commands,
-		kernel,
-		1,
-		NULL,
-		&glb_sz,
-		&lcl_sz,
-		0,
-		NULL,
-		NULL
-	);
-	CHECK_CL
-
-	clFinish( commands );
-	CHECK_CL
-
-	const cl_bool blocking_rd = CL_TRUE;
-
-	err = clEnqueueReadBuffer( commands, indc, blocking_rd, 0, sizeof(int) * ocount, indices, 0, NULL, NULL );
-	CHECK_CL
-
-#if 0
-	// Read back the results
-	float intersections[ ocount ][ 3 ];
-	err = clEnqueueReadBuffer( commands, isec, blocking_rd, 0, sizeof(float) * 3 * ocount, intersections, 0, NULL, NULL );
-	CHECK_CL
-#endif
-
-#if 0
-	for ( int i=0; i<ocount; ++i )
-		LOGI( "0x%x (%f,%f,%f)", indices[ i ], intersections[ i ][ 0 ], intersections[ i ][ 1 ], intersections[ i ][ 2 ] );
-#endif
-
-	clReleaseMemObject( seed );
-	CHECK_CL
-	clReleaseMemObject( lsrc );
-	CHECK_CL
-	clReleaseMemObject( mmax );
-	CHECK_CL
-	clReleaseMemObject( indc );
-	CHECK_CL
-#if 0
-	clReleaseMemObject( isec );
-	CHECK_CL
-#endif
-}
-#endif
-
-
-void osino_opencl_client_exit( void )
+void osino_opcl_client_exit( void )
 {
 	cl_int err;
 	for ( int i=0; i<NUMSTREAMS; ++i )
@@ -587,7 +465,7 @@ void osino_opencl_client_exit( void )
 }
 
 
-void osino_opencl_client_test(void)
+void osino_opcl_client_test(void)
 {
 	const int stride=1;
 	int gridOff[3] = { 0,0,0 };
@@ -597,7 +475,7 @@ void osino_opencl_client_test(void)
 	const float freq = 1.0f;
 	const float lacunarity = 0.4f;
 	const float persistence = 0.9f;
-	const int rq = osino_opencl_client_computefield
+	const int rq = osino_opcl_client_computefield
 	(
 		stride,
 		gridOff,	
@@ -610,24 +488,24 @@ void osino_opencl_client_test(void)
 	);
 	LOGI("Fired off compute rq %d.", rq);
 
-	osino_opencl_client_classifyfield(rq, -28000);
+	osino_opcl_client_classifyfield(rq, -28000);
 	LOGI("Fired off classification.");
 
-	osino_opencl_client_stagefield(rq);
+	osino_opcl_client_stagefield(rq);
 	LOGI("Fired off staging of field.");
 
-	osino_opencl_client_stagecases(rq);
+	osino_opcl_client_stagecases(rq);
 	LOGI("Fired off staging of cases.");
 
-	osino_opencl_client_sync(rq);
+	osino_opcl_client_sync(rq);
 	LOGI("Synchronized queue.");
 
 	value_t fimg[BLKSIZ];
-	osino_opencl_client_collectfield(rq, fimg);
+	osino_opcl_client_collectfield(rq, fimg);
 	LOGI("Collected field.");
 
 	uint8_t cimg[BLKSIZ];
-	osino_opencl_client_collectcases(rq, cimg);
+	osino_opcl_client_collectcases(rq, cimg);
 	LOGI("Collected cases.");
 
 	FILE* f;
@@ -646,7 +524,7 @@ void osino_opencl_client_test(void)
 	fwrite( creader, BLKRES*BLKRES*sizeof(uint8_t), 1, f );
 	fclose(f);
 
-	osino_opencl_client_release(rq);
+	osino_opcl_client_release(rq);
 	LOGI("Released client rq %d.", rq);
 }
 

@@ -46,7 +46,7 @@ static uint8_t* stagingareas_c[NUMSTREAMS];
 	}
 
 
-static void pick_device(void)
+static int pick_device(void)
 {
 	int nDevices=-1;
 	cudaGetDeviceCount(&nDevices);
@@ -68,34 +68,47 @@ static void pick_device(void)
 	}
 	CUresult deviceGetResult = cuDeviceGet(&device, 0);
 	if (deviceGetResult != CUDA_SUCCESS)
+	{
 		fprintf(stderr,"cuDeviceGet error: 0x%x (%s)\n", deviceGetResult, cudaResultName(deviceGetResult));
+		return -1;
+	}
 	size_t totalmem=0;
 	cuDeviceTotalMem(&totalmem, device);
 	fprintf(stderr,"Picked device with %lu MiB of memory.\n", totalmem / (1024*1024));
+	return 0;
 }
 
 
-void osino_cuda_client_init(void)
+int osino_cuda_client_init(void)
 {
 	fprintf( stderr, "CUDA version: %d\n", CUDA_VERSION );
 	int driver_version = 0;
 	const CUresult versionResult = cuDriverGetVersion( &driver_version );
 	if ( versionResult != CUDA_SUCCESS )
+	{
 		fprintf( stderr, "Failed to get cuda driver version." );
+		return 0;
+	}
 	else
 		fprintf( stderr, "CUDA driver version: %d\n", driver_version );
 
 	const CUresult initResult = cuInit(0);
 	if (initResult != CUDA_SUCCESS)
+	{
 		fprintf(stderr,"cuInit error: 0x%x (%s)\n", initResult, cudaResultName(initResult));
-	assert(initResult == CUDA_SUCCESS);
+		return 0;
+	}
 
-	pick_device();
+	const int picked = pick_device();
+	if ( picked < 0 )
+		return 0;
 
 	const CUresult createContextResult = cuCtxCreate(&context, 0, device);
 	if (createContextResult != CUDA_SUCCESS)
+	{
 		fprintf(stderr,"cuModuleLoad error: 0x%x (%s)\n", createContextResult, cudaResultName(createContextResult));
-	assert(createContextResult == CUDA_SUCCESS);
+		return 0;
+	}
 
 	CUresult moduleLoadResult;
 	CUresult getFunctionResult;
@@ -179,6 +192,7 @@ void osino_cuda_client_init(void)
 	}
 
 	CHECK_CUDA
+	return 1;
 }
 
 
