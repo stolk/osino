@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <string.h>
 
+#include "osino_client.h"
 #include "osino_cuda_client.h"
 
 #include "cuda.h"
@@ -101,8 +102,8 @@ void osino_cuda_client_init(void)
 
 	// compute
 
-	const char* ptxname  = "computefield.ptx";
-	const char* ptxname1 = "computefield.ptx";
+	const char* ptxname  = "kernels-cu/computefield.ptx";
+	const char* ptxname1 = "kernels-cu/computefield.ptx";
 
 	const char* funname0 = "osino_computefield";
 	const char* funname1 = "osino_computematter";
@@ -127,7 +128,7 @@ void osino_cuda_client_init(void)
 
 	// classify
 
-	moduleLoadResult = cuModuleLoad(&module_classify, "classifyfield.ptx");
+	moduleLoadResult = cuModuleLoad(&module_classify, "kernels-cu/classifyfield.ptx");
 	if (moduleLoadResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuModuleLoad error: 0x%x (%s)\n", moduleLoadResult, cudaResultName(moduleLoadResult));
 	assert(moduleLoadResult == CUDA_SUCCESS);
@@ -221,6 +222,7 @@ void osino_cuda_client_exit(void)
 	destroyResult = cuCtxDestroy(context);
 	assert(destroyResult == CUDA_SUCCESS);
 	
+	fprintf(stderr, "Cuda client has been shut down.\n");
 }
 
 

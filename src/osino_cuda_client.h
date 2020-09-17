@@ -3,18 +3,6 @@ extern "C"
 {
 #endif
 
-#if defined(STOREFP16)
-typedef __fp16 value_t;
-#elif defined(STORECHARS)
-typedef unsigned char value_t;
-#elif defined(STORESHORTS)
-typedef signed short value_t;
-#else
-typedef float value_t;
-#endif
-
-#define NUMSTREAMS 16
-
 extern void osino_cuda_client_init(void);
 
 extern void osino_cuda_client_exit(void);
