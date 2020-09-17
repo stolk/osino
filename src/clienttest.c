@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "osino_cuda.h"
+#include "osino_cuda_client.h"
 
 typedef short value_t;
 
@@ -29,7 +29,7 @@ static void dump_volume_as_pgm( const value_t* volume, const char* fname )
 
 int main( int argc, char* argv[] )
 {
-	osino_client_init();
+	osino_cuda_client_init();
 
 	const int fullgridsz = BLKRES-3;
 	const int stride = 1;
@@ -38,7 +38,7 @@ int main( int argc, char* argv[] )
 	int gridoff[3] = {0,0,0};
 
 #if 1
-	const int rq = osino_client_computematter
+	const int rq = osino_cuda_client_computematter
 	(
 		stride,
 		gridoff,
@@ -50,7 +50,7 @@ int main( int argc, char* argv[] )
 		0.40f		// persistence
 	);
 #else
-	const int rq = osino_client_computefield
+	const int rq = osino_cuda_client_computefield
 	(
 		stride,
 		gridoff,
@@ -62,14 +62,14 @@ int main( int argc, char* argv[] )
 		0.40f
 	);
 #endif
-	osino_client_sync(rq);
+	osino_cuda_client_sync(rq);
 
-	osino_client_stagefield(rq);
+	osino_cuda_client_stagefield(rq);
 
 	value_t* img = (value_t*) malloc( sizeof(value_t) * BLKRES*BLKRES*BLKRES );
 	assert(img);
 
-	osino_client_collectfield(rq, img);
+	osino_cuda_client_collectfield(rq, img);
 
 	dump_volume_as_pgm( img, "computed_matter.pgm" );
 

@@ -42,8 +42,8 @@ intersectedges: intersectedges.cu
 testcase: testcase.cu
 	$(NVCC) testcase.cu -o testcase
 
-clienttest: clienttest.c osino_cuda.c computematter.cu computefield.cu
-	clang-9 -g -O0 -o clienttest -DSTORESHORTS -DBLKMAG=7 -D_GNU_SOURCE -I$(HOME)/src/ThreadTracer -I/usr/local/cuda/include -L/usr/local/cuda/lib64 clienttest.c osino_cuda.c $(HOME)/src/ThreadTracer/threadtracer.c -lcudart -lcuda
+clienttest: clienttest.c osino_cuda_client.c computefield.cu
+	clang-10 -g -O0 -o clienttest -DSTORESHORTS -DBLKMAG=6 -D_GNU_SOURCE -I$(HOME)/src/ThreadTracer -I/usr/local/cuda/include -L/usr/local/cuda/lib64 clienttest.c osino_cuda_client.c $(HOME)/src/ThreadTracer/threadtracer.c -lcudart -lcuda
 	$(NVPROF) --device-buffer-size 160 ./clienttest
 	-gimp computed_matter.pgm
 

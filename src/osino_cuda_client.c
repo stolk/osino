@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <string.h>
 
-#include "osino_cuda.h"
+#include "osino_cuda_client.h"
 
 #include "cuda.h"
 #include "cuda_runtime.h"
