@@ -74,7 +74,7 @@ static void pick_device(void)
 }
 
 
-void osino_client_init(void)
+void osino_cuda_client_init(void)
 {
 	fprintf( stderr, "CUDA version: %d\n", CUDA_VERSION );
 	int driver_version = 0;
@@ -181,7 +181,7 @@ void osino_client_init(void)
 }
 
 
-void osino_client_exit(void)
+void osino_cuda_client_exit(void)
 {
 	for (int s=0; s<NUMSTREAMS; ++s)
 	{
@@ -227,13 +227,13 @@ void osino_client_exit(void)
 static int callcount=0;
 static int usedcount=0;
 
-int osino_client_usage(void)
+int osino_cuda_client_usage(void)
 {
 	return usedcount;
 }
 
 
-int osino_client_computefield(int stride, int gridoff[3], int fullgridsz, const float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
+int osino_cuda_client_computefield(int stride, int gridoff[3], int fullgridsz, const float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
 {
 	assert(usedcount!=NUMSTREAMS);
 	if (usedcount==NUMSTREAMS)
@@ -277,7 +277,7 @@ int osino_client_computefield(int stride, int gridoff[3], int fullgridsz, const 
 }
 
 
-int osino_client_computematter(int stride, int gridoff[3], int fullgridsz, const float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
+int osino_cuda_client_computematter(int stride, int gridoff[3], int fullgridsz, const float offsets[3], float domainwarp, float freq, float lacunarity, float persistence)
 {
 	assert(usedcount!=NUMSTREAMS);
 	if (usedcount==NUMSTREAMS)
@@ -321,7 +321,7 @@ int osino_client_computematter(int stride, int gridoff[3], int fullgridsz, const
 }
 
 
-void osino_client_classifyfield
+void osino_cuda_client_classifyfield
 (
 	int slot, 
 	value_t isoval
@@ -352,7 +352,7 @@ void osino_client_classifyfield
 }
 
 
-void osino_client_sync(int slot)
+void osino_cuda_client_sync(int slot)
 {
 	const char* tags[NUMSTREAMS] =
 	{
@@ -367,14 +367,14 @@ void osino_client_sync(int slot)
 }
 
 
-void osino_client_release(int slot)
+void osino_cuda_client_release(int slot)
 {
 	usedcount--;
 	assert(usedcount>=0);
 }
 
 
-void osino_client_stagecases(int slot)
+void osino_cuda_client_stagecases(int slot)
 {
 	const char* tags[NUMSTREAMS] =
 	{
@@ -395,7 +395,7 @@ void osino_client_stagecases(int slot)
 }
 
 
-void osino_client_stagefield(int slot)
+void osino_cuda_client_stagefield(int slot)
 {
 	const char* tags[NUMSTREAMS] =
 	{
@@ -416,7 +416,7 @@ void osino_client_stagefield(int slot)
 }
 
 
-void osino_client_collectfield(int slot, value_t* output)
+void osino_cuda_client_collectfield(int slot, value_t* output)
 {
 	const char* tags[NUMSTREAMS] =
 	{
@@ -430,7 +430,7 @@ void osino_client_collectfield(int slot, value_t* output)
 }
 
 
-void osino_client_collectcases(int slot, uint8_t* output)
+void osino_cuda_client_collectcases(int slot, uint8_t* output)
 {
 	const char* tags[NUMSTREAMS] =
 	{
