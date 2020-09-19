@@ -116,7 +116,6 @@ int osino_cuda_client_init(void)
 	// compute
 
 	const char* ptxname  = "kernels-cu/computefield.ptx";
-	const char* ptxname1 = "kernels-cu/computefield.ptx";
 
 	const char* funname0 = "osino_computefield";
 	const char* funname1 = "osino_computematter";

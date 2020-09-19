@@ -5,6 +5,8 @@
 #include "osino_cuda_client.h"
 #include "osino_opencl_client.h"
 
+#include "logx.h"
+
 static uint64_t platform=0;
 
 //! Before using compute kernels.
@@ -137,7 +139,7 @@ void osino_client_collectfield(int slot, value_t* output)
 }
 
 //! Collect the results.
-extern void osino_client_collectcases(int slot, uint8_t* output)
+void osino_client_collectcases(int slot, uint8_t* output)
 {
 	if (platform == OSINO_CUDA)
 		osino_cuda_client_collectcases(slot, output);
@@ -145,6 +147,69 @@ extern void osino_client_collectcases(int slot, uint8_t* output)
 		osino_opcl_client_collectcases(slot, output);
 }
 
-#ifdef __cplusplus
+
+//! Test the Osino client implementation by running kernel, and retrieving the results.
+void osino_client_test(void)
+{
+	const int stride=1;
+	int gridOff[3] = { 0,0,0 };
+	const int fullres = BLKRES;
+	float offsets[3] = { 12.34f, 34.56f, 56.67f };
+	const float domainwarp = 0.4f;
+	const float freq = 1.0f;
+	const float lacunarity = 0.4f;
+	const float persistence = 0.9f;
+	const int rq = osino_client_computefield
+	(
+		stride,
+		gridOff,
+		fullres,
+		offsets,
+		domainwarp,
+		freq,
+		lacunarity,
+		persistence
+	);
+	LOGI("Fired off compute rq %d.", rq);
+
+	osino_client_classifyfield(rq, -28000);
+	LOGI("Fired off classification.");
+
+	osino_client_stagefield(rq);
+	LOGI("Fired off staging of field.");
+
+	osino_client_stagecases(rq);
+	LOGI("Fired off staging of cases.");
+
+	osino_client_sync(rq);
+	LOGI("Synchronized queue.");
+
+	value_t fimg[BLKSIZ];
+	osino_client_collectfield(rq, fimg);
+	LOGI("Collected field.");
+
+	uint8_t cimg[BLKSIZ];
+	osino_client_collectcases(rq, cimg);
+	LOGI("Collected cases.");
+
+	FILE* f;
+
+	value_t* freader = fimg + BLKRES * BLKRES * BLKRES / 2;
+	f = fopen("field.pgm","wb");
+	ASSERT(f);
+	fprintf( f, "P5\n%d %d\n%d\n", BLKRES, BLKRES, 65535 );
+	fwrite( freader, BLKRES*BLKRES*sizeof(value_t), 1, f );
+	fclose(f);
+
+	uint8_t* creader = cimg + BLKRES * BLKRES * BLKRES / 2;
+	f = fopen("cases.pgm","wb");
+	ASSERT(f);
+	fprintf( f, "P5\n%d %d\n%d\n", BLKRES, BLKRES, 255 );
+	fwrite( creader, BLKRES*BLKRES*sizeof(uint8_t), 1, f );
+	fclose(f);
+
+	osino_client_release(rq);
+	LOGI("Released client rq %d.", rq);
+	LOGI("Wrote osino test results to field.pgm and cases.pgm");
 }
-#endif
+

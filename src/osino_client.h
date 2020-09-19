@@ -15,6 +15,10 @@ typedef float value_t;
 
 #define NUMSTREAMS 16
 
+#define BLKRES	(1<<BLKMAG)
+#define BLKSIZ	(BLKRES*BLKRES*BLKRES)
+
+
 enum OsinoPlatformFlags
 {
 	OSINO_CUDA=1,
@@ -60,6 +64,8 @@ extern void osino_client_collectfield(int slot, value_t* output);
 //! Collect the results.
 extern void osino_client_collectcases(int slot, uint8_t* output);
 
+//! Test implementation by executing a kernel and retrieving the results.
+extern void osino_client_test(void);
 
 #ifdef __cplusplus
 }

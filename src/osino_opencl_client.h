@@ -15,8 +15,6 @@ extern void osino_opcl_client_sync( int rq );
 extern void osino_opcl_client_release( int rq );
 extern int  osino_opcl_client_usage( void );
 
-extern void osino_opcl_client_test( void );
-
 //! Returns a request id.
 extern int  osino_opcl_client_computefield (int stride, int gridOff[3], int fullres, const float offsets[3], float domainwarp, float freq, float lacunarity, float persistence);
 
