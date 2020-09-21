@@ -126,7 +126,7 @@ int osino_opcl_client_init( void )
 		);
 		CHECK_CL
 
-		LOGI( "OSINO: Platform %s %s %s %s has %d devices:", prof, vers, name, vend, num_devices );
+		LOGI( "OSINO: Platform %s %s %s %s has %d device%s:", prof, vers, name, vend, num_devices, num_devices==1?"":"s" );
 		for ( int j=0; j<num_devices; ++j )
 		{
 			cl_device_id device = devices[ j ];
@@ -138,7 +138,7 @@ int osino_opcl_client_init( void )
 			size_t wgsz = -1;
 			size_t gmsz = -1;
 			err = clGetDeviceInfo( device, CL_DEVICE_NAME, sizeof(name), name, 0 );
-			err = clGetDeviceInfo( device, CL_DEVICE_NAME, sizeof(vend), vend, 0 );
+			err = clGetDeviceInfo( device, CL_DEVICE_VENDOR, sizeof(vend), vend, 0 );
 			err = clGetDeviceInfo( device, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(units), &units, 0 );
 			err = clGetDeviceInfo( device, CL_DEVICE_TYPE, sizeof(type), &type, 0 );
 			err = clGetDeviceInfo( device, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(lmem), &lmem, 0 );
@@ -150,7 +150,7 @@ int osino_opcl_client_init( void )
 			CHECK_CL
 			if ( type == CL_DEVICE_TYPE_GPU )
 				device_id = device;
-			LOGI( "  %s %s with [%d units] localmem=%zu globalmem=%zu dims=%d(%zux%zux%zu) max workgrp sz %zu", name, vend, units, lmem, gmsz, dims, wisz[0], wisz[1], wisz[2], wgsz );
+			LOGI( "  %s %s with [%d units] localmem=%zuKiB globalmem=%zuMiB dims=%d(%zux%zux%zu) max workgrp sz %zu", name, vend, units, lmem/1024, gmsz/(1024*1024), dims, wisz[0], wisz[1], wisz[2], wgsz );
 		}
 	}
 
