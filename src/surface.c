@@ -693,6 +693,8 @@ int surface_extract_cases
 	float*  __restrict__ outputv,			// surface verts
 	float*  __restrict__ outputn,			// surface normals
 	float*  __restrict__ outputm,			// surface materials
+	int*	__restrict__ numsurfacecells,		// written with the affected cell count.
+	int**   __restrict__ surfacecells,		// written with the affected cell addresses
 	int maxtria,					// maximum number of triangles.
 	int threadnr					// Use scratch pool 0,1,2 or 3.
 )
@@ -704,7 +706,7 @@ int surface_extract_cases
 	int*        sizes = listsizes[threadnr];
 	caselist_t* lists = caselists[threadnr];
 
-	memset(sizes, 0, 256*sizeof(int));
+	memset(sizes, 0, sizeof(listsizes[threadnr]));
 
 	TT_BEGIN("sortcases");
 	for (int x=xlo; x<xhi; ++x)
@@ -725,8 +727,12 @@ int surface_extract_cases
 
 	// See if it fits...
 	int total=0;
+	int numcells=0;
 	for (int ca=1; ca<0xff; ca++)
-		total += triangle_count_table[ca] * sizes[ca];
+	{
+		total    += triangle_count_table[ca] * sizes[ca];
+		numcells += sizes[ca];	
+	}
 	assert(total<maxtria);
 
 	// Now generate all triangles...
@@ -754,6 +760,26 @@ int surface_extract_cases
 		assert(totaltria < maxtria);
 	}
 	TT_END  ("generate");
+
+	*numsurfacecells = numcells;
+	if (surfacecells)
+	{
+		TT_BEGIN("cellreport");
+		int* cells = (int*)malloc( sizeof(int) * numcells );
+		*surfacecells = cells;
+		int written=0;
+		for ( int ca=1; ca<0xff; ca++ )
+		{
+			const int cnt = sizes[ ca ];
+			if (cnt)
+			{
+				memcpy( cells+written, lists[ ca ], cnt*sizeof(int) );
+				written += cnt;
+			}
+		}
+		TT_END  ("cellreport");
+	}
+
 	return totaltria;
 }
 

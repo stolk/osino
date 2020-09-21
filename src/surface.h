@@ -39,6 +39,8 @@ extern int surface_extract_cases
 	float*  __restrict__ outputv,			// surface verts
 	float*  __restrict__ outputn,			// surface normals
 	float*  __restrict__ outputm,			// surface materials
+	int*	__restrict__ numsurfacecells,		// written with the affected cell count.
+	int**   __restrict__ surfacecells,		// written with the affected cell addresses
 	int maxtria,					// maximum number of triangles.
 	int threadnr					// Use scratch pool 0,1,2 or 3.
 );
