@@ -14,6 +14,7 @@ uint64_t osino_client_init(uint64_t flags)
 {
 	if (flags & OSINO_CUDA)
 	{
+		LOGI("OSINO: Probing CUDA availability...");
 		const int ok = osino_cuda_client_init();
 		if ( ok )
 		{
@@ -23,6 +24,7 @@ uint64_t osino_client_init(uint64_t flags)
 	}
 	if (flags & OSINO_OPENCL)
 	{
+		LOGI("OSINO: Probing OpenCL availability...");
 		const int ok = osino_opcl_client_init();
 		if ( ok )
 		{
