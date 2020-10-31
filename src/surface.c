@@ -410,15 +410,17 @@ static inline int mc_process_case_instances
  	const value_t* __restrict__ fielddensity,
 	const value_t* __restrict__ fieldtype,
 	value_t isoval,
- 	float* __restrict__ outputv,	// vertices
- 	float* __restrict__ outputn,	// normals
-	float* __restrict__ outputm	// materials
+ 	float*   __restrict__ outputv,	// vertices
+ 	float*   __restrict__ outputn,	// normals
+	float*   __restrict__ outputm,	// materials
+	float*   __restrict__ outputo	// ore types
 )
 {
 	int num_trias_generated = 0;
-	float* writerv = outputv;
-	float* writern = outputn;
-	float* writerm = outputm;
+	float*   writerv = outputv;
+	float*   writern = outputn;
+	float*   writerm = outputm;
+	float*   writero = outputo;
 
 	for (int inst=0; inst<numcases; ++inst)
 	{
@@ -538,21 +540,25 @@ static inline int mc_process_case_instances
 		}
 	
 		// Determine the corner materials
-		float corner_materials[ 8 ];
+		float   corner_materials[ 8 ];
+		float   corner_oretypes [ 8 ];
 		for ( int i=0; i<8; ++i )
 		{
 #if defined(STOREFP16)
 			const float v = fieldtype[ corner_idx[ i ] ];
 #elif defined(STORESHORTS)
-			const float v = (1/32767.0f) * fieldtype[ corner_idx[ i ] ];
+			const value_t fv = fieldtype[ corner_idx[ i ] ];
+			const float v = (1/32767.0f) * fv;
+			corner_oretypes[ i ] = (float) (fv & 3);
 #endif
 			corner_materials[ i ] = v;
 		}
 
 		// Determine the vertices.
-		float edge_verts[ 12 ][ 3 ];
-		float edge_norms[ 12 ][ 3 ];
-		float edge_mtrls[ 12 ];
+		float   edge_verts[ 12 ][ 3 ];
+		float   edge_norms[ 12 ][ 3 ];
+		float   edge_mtrls[ 12 ];
+		float   edge_otyps[ 12 ];
 		for ( int edge=0; edge<12; ++edge )
 		{
 			if ( edgeflags & ( 1 << edge ) )
@@ -584,17 +590,16 @@ static inline int mc_process_case_instances
 				edge_norms[ edge ][ 1 ] = ny * invlen;
 				edge_norms[ edge ][ 2 ] = nz * invlen;
 				edge_mtrls[ edge ] = t0 * corner_materials[ i0 ] + t1 * corner_materials[ i1 ];
+				edge_otyps[ edge ] = t0 * corner_oretypes [ i0 ] + t1 * corner_oretypes [ i1 ];
 			}
 		}
-
-		
 
 		// Determine the triangles (up to five per cube).
 		for ( int tria=0; tria<5; ++tria )
 		{
 			if ( triangle_connection_table[ caseidx ][ 3*tria ] < 0 )
 				break;
-#if 1
+#if defined(DEBUG)
 			// Sanity check: no incident vertices.
 			const int iA = triangle_connection_table[ caseidx ][ 3*tria+0 ];
 			const int iB = triangle_connection_table[ caseidx ][ 3*tria+1 ];
@@ -621,15 +626,18 @@ static inline int mc_process_case_instances
 			{
 				int vert = triangle_connection_table[ caseidx ][ 3*tria+corner ];
 				assert(vert<12 && vert>=0);
-				const float* v = edge_verts[ vert ];
-				const float* n = edge_norms[ vert ];
-				const float  m = edge_mtrls[ vert ];
+				const float*  v = edge_verts[ vert ];
+				const float*  n = edge_norms[ vert ];
+				const float   m = edge_mtrls[ vert ];
+				const float   o = edge_otyps[ vert ];
 				memcpy( writerv, v, 3*sizeof(float) );
 				memcpy( writern, n, 3*sizeof(float) );
 				*writerm = m;
+				*writero = o;
 				writerv += 3;
 				writern += 3;
 				writerm += 1;
+				writero += 1;
 			}
 			num_trias_generated++;
 		}
@@ -690,11 +698,12 @@ int surface_extract_cases
 	int yhi,
 	int zlo,
 	int zhi,
-	float*  __restrict__ outputv,			// surface verts
-	float*  __restrict__ outputn,			// surface normals
-	float*  __restrict__ outputm,			// surface materials
-	int*	__restrict__ numsurfacecells,		// written with the affected cell count.
-	int**   __restrict__ surfacecells,		// written with the affected cell addresses
+	float*   __restrict__ outputv,			// surface verts
+	float*   __restrict__ outputn,			// surface normals
+	float*   __restrict__ outputm,			// surface materials
+	float*   __restrict__ outputo,			// surface ore types
+	int*     __restrict__ numsurfacecells,		// written with the affected cell count.
+	int**    __restrict__ surfacecells,		// written with the affected cell addresses
 	int maxtria,					// maximum number of triangles.
 	int threadnr					// Use scratch pool 0,1,2 or 3.
 )
@@ -702,6 +711,7 @@ int surface_extract_cases
 	float*   v = outputv;
 	float*   n = outputn;
 	float*   m = outputm;
+	float*   o = outputo;
 
 	int*        sizes = listsizes[threadnr];
 	caselist_t* lists = caselists[threadnr];
@@ -751,11 +761,13 @@ int surface_extract_cases
 			isoval,
  			v,	// vertices
  			n,	// normals
-			m	// materials
+			m,	// materials
+			o
 		);
 		v += numt * 3 * 3;
 		n += numt * 3 * 3;
 		m += numt * 3;
+		o += numt * 3;
 		totaltria += numt;
 		assert(totaltria < maxtria);
 	}

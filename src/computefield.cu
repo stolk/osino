@@ -289,6 +289,21 @@ float osino_3d_4o( float x, float y, float z, float lacunarity, float persistenc
 }
 
 
+__device__
+unsigned char osino_3d_compete( float x, float y, float z )
+{
+	const float s = 0.02f;
+	const float n0 = osino_3d(s*x+12.34f,s*y+23.41f,s*z+34.12f);
+	const float n1 = osino_3d(s*x+45.67f,s*y+56.78f,s*z+67.89f);
+	const float n2 = osino_3d(s*x-12.34f,s*y-23.41f,s*z-34.12f);
+	const float n3 = osino_3d(s*x-45.67f,s*y-56.78f,s*z-67.89f);
+	if (n0>=n1 && n0>=n2 && n0>n3) return 0;
+	if (n1>=n0 && n1>=n2 && n1>n3) return 1;
+	if (n2>=n0 && n2>=n1 && n2>n3) return 2;
+	return 3;
+}
+
+
 extern "C"
 {
 
@@ -337,12 +352,14 @@ void osino_computematter
 	field[ idx ] = (value_t) ( 127 + 127 * result + perturb);
 #elif defined(STORESHORTS)
 	field[ idx ] = ( ((value_t) ( result * 32767.0f )) & 0xfff0 );
+	field[ idx ] |= osino_3d_compete( x,y,z );
 #elif defined(STOREFP16)
 	field[ idx ] = __float2half(result);
 #else
 	field[ idx ] = result;
 #endif
 }
+
 
 __global__
 void osino_computefield

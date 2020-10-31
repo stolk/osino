@@ -1,7 +1,7 @@
 NVCC=/usr/local/cuda/bin/nvcc
 NVPROF=/usr/local/cuda/bin/nvprof
 
-NVCFLAGS=--ptxas-options=-v -keep --generate-line-info --source-in-ptx --use_fast_math -arch sm_50
+NVCFLAGS=--ptxas-options=-v -keep --generate-line-info --source-in-ptx --use_fast_math -arch sm_52
 
 #STORAGEFLAGS=-USTORECHARS -DSTOREFP16 -USTORESHORTS
 STORAGEFLAGS=-USTORECHARS -USTOREFP16 -DSTORESHORTS
