@@ -1,6 +1,6 @@
 
 
-inline const char* clErrorString(cl_int err)
+static const char* clErrorString(cl_int err)
 {
     const char* errString = NULL;
  
