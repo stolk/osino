@@ -96,7 +96,7 @@ int osino_opcl_client_init( void )
 	if ( num_platforms == 0 )
 		return 0;
 
-	for ( int i=0; i<num_platforms; ++i )
+	for ( unsigned int i=0; i<num_platforms; ++i )
 	{
 		const cl_platform_id platform = platforms[ i ];
 		LOGI( "OSINO: Platform nr %d:", i );
@@ -127,7 +127,7 @@ int osino_opcl_client_init( void )
 		CHECK_CL
 
 		LOGI( "OSINO: Platform %s %s %s %s has %d device%s:", prof, vers, name, vend, num_devices, num_devices==1?"":"s" );
-		for ( int j=0; j<num_devices; ++j )
+		for ( unsigned int j=0; j<num_devices; ++j )
 		{
 			cl_device_id device = devices[ j ];
 			cl_uint units = -1;
@@ -188,12 +188,12 @@ int osino_opcl_client_init( void )
 	ASSERT( f );
 	bytesread = fread( sourcecode0, 1, sizeof( sourcecode0 ), f );
 	fclose( f );
-	ASSERT( bytesread > 0 && bytesread < sizeof( sourcecode0 ) );
+	ASSERT( bytesread > 0 && bytesread < (int)sizeof( sourcecode0 ) );
 	f = fopen( "kernels-cl/classifyfield.cl", "r" );
 	ASSERT( f );
 	bytesread = fread( sourcecode1, 1, sizeof( sourcecode1 ), f );
 	fclose( f );
-	ASSERT( bytesread > 0 && bytesread < sizeof( sourcecode1 ) );
+	ASSERT( bytesread > 0 && bytesread < (int)sizeof( sourcecode1 ) );
 
 	const char* kernel_source[ 3 ] =
 	{
