@@ -599,7 +599,7 @@ static inline int mc_process_case_instances
 		{
 			if ( triangle_connection_table[ caseidx ][ 3*tria ] < 0 )
 				break;
-#if defined(DEBUG)
+#if defined(DEBUG) || 1
 			// Sanity check: no incident vertices.
 			const int iA = triangle_connection_table[ caseidx ][ 3*tria+0 ];
 			const int iB = triangle_connection_table[ caseidx ][ 3*tria+1 ];
