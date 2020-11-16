@@ -170,11 +170,11 @@ void doubledomainwarp
 	float x = xc * s0;
 	float y = yc * s1;
 
-	const float w0x = osino_2d(offset_x+411+y, offset_y+423-y) * domainwarp0;
-	const float w0y = osino_2d(offset_x+419-x, offset_y+413+x) * domainwarp0;
+	const float w0x = osino_2d(offset_x+411+y, offset_y+423-x) * domainwarp1;
+	const float w0y = osino_2d(offset_x+419-y, offset_y+413+x) * domainwarp1;
 
-	const float w1x = osino_2d(offset_x+711-w0y, offset_y+723-w0y) * domainwarp1;
-	const float w1y = osino_2d(offset_x-719+w0x, offset_y+713+w0x) * domainwarp1;
+	const float w1x = osino_2d(offset_x+711-w0x, offset_y+723-w0y) * domainwarp0;
+	const float w1y = osino_2d(offset_x-719+w0x, offset_y+713+w0y) * domainwarp0;
 
 	x += w1x;
 	y += w1y;
@@ -230,10 +230,10 @@ int main(int argc, char* argv[])
 	const char* opt_out="out_doubledomainwarp.ppm";
 	for ( int i=1; i<argc; ++i)
 	{
-		if (!strncmp(argv[i],"freq=",5)) opt_freq = atof(argv[i]+5);
+		if (!strncmp(argv[i],"freq=",5))  opt_freq  = atof(argv[i]+5);
 		if (!strncmp(argv[i],"warp0=",6)) opt_warp0 = atof(argv[i]+6);
 		if (!strncmp(argv[i],"warp1=",6)) opt_warp1 = atof(argv[i]+6);
-		if (!strncmp(argv[i],"out=",4)) opt_out = argv[i]+4;
+		if (!strncmp(argv[i],"out=",4))   opt_out   = argv[i]+4;
 	}
 	query();
 
@@ -245,7 +245,8 @@ int main(int argc, char* argv[])
 
 	CHECK_CUDA
 
-	doubledomainwarp<<<IMRES,IMRES>>>(field, 456.789f, 123.456f, opt_warp0, opt_warp1, opt_freq );
+	doubledomainwarp<<<IMRES,IMRES>>>(field, 14567.89f, 21123.46f, opt_warp0, opt_warp1, opt_freq );
+	fprintf( stderr,"warp0 %f warp1 %f", opt_warp0, opt_warp1 );
 
 	cudaDeviceSynchronize();
 	CHECK_CUDA
@@ -256,16 +257,16 @@ int main(int argc, char* argv[])
 	{
 		int idx = 0;
 		const value_t v = field[i];
-		if ( v> 2000 && v< 4000 ) idx=1;
-		if ( v> 5000 && v< 9000 ) idx=2;
-		if ( v>10000 && v<12000 ) idx=1;
+		if ( v>  2000 && v< 4000 ) idx=1;
+		if ( v>  5000 && v< 9000 ) idx=2;
+		if ( v> 10000 && v<12000 ) idx=1;
 		if ( v<-16000 ) idx=3;
 		im[i][0] = pal[idx][0];
 		im[i][1] = pal[idx][1];
 		im[i][2] = pal[idx][2];
 	}
 
-	FILE* f = fopen("out_doubledomainwarp.ppm","wb");
+	FILE* f = fopen(opt_out,"wb");
 	fprintf(f, "P6\n%d %d\n255\n", IMRES, IMRES);
 	fwrite( im, sizeof(im), 1, f );
 	fclose(f);

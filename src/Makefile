@@ -39,6 +39,12 @@ classifyfield: classifyfield.cu
 intersectedges: intersectedges.cu
 	$(NVCC) $(NVCFLAGS) -DBLKMAG=6 $(STORAGEFLAGS) intersectedges.cu -o intersectedges
 
+doubledomainwarp: doubledomainwarp.cu Makefile
+	$(NVCC) $(NVCFLAGS) -DIMMAG=10  doubledomainwarp.cu -o doubledomainwarp
+	$(NVPROF) --device-buffer-size 160 ./doubledomainwarp
+	-display out_doubledomainwarp.ppm
+
+
 testcase: testcase.cu
 	$(NVCC) testcase.cu -o testcase
 
@@ -48,4 +54,6 @@ clienttest: clienttest.c osino_cuda_client.c computefield.cu
 	-gimp computed_matter.pgm
 
 
+anim.mp4: anim/im0000.ppm Makefile
+	ffmpeg -r 30 -i anim/im%04d.ppm -c:v mpeg4 -b:v 5M anim.mp4
 
