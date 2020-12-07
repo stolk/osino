@@ -50,9 +50,9 @@ typedef float value_t;
 
 // Hash function that we use to generate random directions.
 __device__ __forceinline__
-int murmur(int key, uint32_t seed)
+uint32_t murmur(uint32_t key, uint32_t seed)
 {
-	int k = ( key ^ seed ) * 0x5bd1e995;
+	uint32_t k = ( key ^ seed ) * 0x5bd1e995;
 	k = k ^ (k>>24);
 	return k;
 }
@@ -76,12 +76,12 @@ float dot_3d( float ax, float ay, float az, float bx, float by, float bz )
 
 // Generates a random 2D direction for specified grid location.
 #define RANDOMDIR_2D(x0,y0,PRF) \
-	const int PRF ## hx = murmur( x0*8887+y0*7213, 0x17295179 ); \
-	const int PRF ## hy = murmur( x0*8887+y0*7213, 0x18732214 ); \
-	const int PRF ## ax = (PRF ## hx)>>16; \
-	const int PRF ## ay = (PRF ## hy)>>16; \
-	const int PRF ## bx = PRF ## hx & 0x0000ffff; \
-	const int PRF ## by = PRF ## hy & 0x0000ffff; \
+	const uint32_t PRF ## hx = murmur( x0*8887+y0*7213+2521008887, 0xb7295179 ); \
+	const uint32_t PRF ## hy = murmur( x0*8887+y0*7213+2521008887, 0x18732214 ); \
+	const uint32_t PRF ## ax = PRF ## hx >>16; \
+	const uint32_t PRF ## ay = PRF ## hy >>16; \
+	const uint32_t PRF ## bx = PRF ## hx & 0x0000ffff; \
+	const uint32_t PRF ## by = PRF ## hy & 0x0000ffff; \
 	const float PRF ## cand_a_x = PRF ## ax * (2/65536.0f) - 1; \
 	const float PRF ## cand_a_y = PRF ## ay * (2/65536.0f) - 1; \
 	const float PRF ## cand_b_x = PRF ## bx * (2/65536.0f) - 1; \
@@ -101,16 +101,16 @@ float dot_3d( float ax, float ay, float az, float bx, float by, float bz )
 
 // Generates a random 3D direction for specified grid location.
 #define RANDOMDIR_3D(x,y,z, PRF) \
-	const int key ## PRF = x * 8887 + y * 7213 + z * 6637; \
-	const int hx ## PRF = murmur( key ## PRF, 0x17295179 ); \
-	const int hy ## PRF = murmur( key ## PRF, 0x18732214 ); \
-	const int hz ## PRF = murmur( key ## PRF, 0x1531f133 ); \
-	const int ax ## PRF = (hx ## PRF)>>16; \
-	const int ay ## PRF = (hy ## PRF)>>16; \
-	const int az ## PRF = (hz ## PRF)>>16; \
-	const int bx ## PRF = hx ## PRF & 0x0000ffff; \
-	const int by ## PRF = hy ## PRF & 0x0000ffff; \
-	const int bz ## PRF = hz ## PRF & 0x0000ffff; \
+	const uint32_t key ## PRF = x * 8887 + y * 7213 + z * 6637 + 2521008887; \
+	const uint32_t hx ## PRF = murmur( key ## PRF, 0xb7295179 ); \
+	const uint32_t hy ## PRF = murmur( key ## PRF, 0x18732214 ); \
+	const uint32_t hz ## PRF = murmur( key ## PRF, 0x9531f133 ); \
+	const uint32_t ax ## PRF = hx ## PRF >> 16; \
+	const uint32_t ay ## PRF = hy ## PRF >> 16; \
+	const uint32_t az ## PRF = hz ## PRF >> 16; \
+	const uint32_t bx ## PRF = hx ## PRF & 0x0000ffff; \
+	const uint32_t by ## PRF = hy ## PRF & 0x0000ffff; \
+	const uint32_t bz ## PRF = hz ## PRF & 0x0000ffff; \
 	const float cand_a_x ## PRF = ax ## PRF * (2/65536.0f) - 1; \
 	const float cand_a_y ## PRF = ay ## PRF * (2/65536.0f) - 1; \
 	const float cand_a_z ## PRF = az ## PRF * (2/65536.0f) - 1; \
