@@ -365,6 +365,7 @@ static const int triangle_count_table[256] =
 };
 
 
+#if 0 // No longer needed, as we use short ints, not fp16.
 // Helper func to gather fp16 values, per
 // https://stackoverflow.com/q/62416595/301166
 __m256 gather_fp16(__fp16 const* fielddensity, __m256i indices)
@@ -377,6 +378,7 @@ __m256 gather_fp16(__fp16 const* fielddensity, __m256i indices)
 	__m256 f = _mm256_mul_ps(_mm256_castsi256_ps(d), two112);
 	return f;
 }
+#endif
 
 
 // Finds the approximate point of intersection of the surface between two points with the values fValue1 and fValue2.
