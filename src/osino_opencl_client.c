@@ -184,12 +184,12 @@ int osino_opcl_client_init( void )
 	memset( sourcecode1, 0, sizeof(sourcecode1) );
 	FILE* f;
 	int bytesread;
-	f = fopen( "kernels-cl/computefield.cl", "r" );
+	f = fopen( "data/kernels-cl/computefield.cl", "r" );
 	ASSERT( f );
 	bytesread = fread( sourcecode0, 1, sizeof( sourcecode0 ), f );
 	fclose( f );
 	ASSERT( bytesread > 0 && bytesread < (int)sizeof( sourcecode0 ) );
-	f = fopen( "kernels-cl/classifyfield.cl", "r" );
+	f = fopen( "data/kernels-cl/classifyfield.cl", "r" );
 	ASSERT( f );
 	bytesread = fread( sourcecode1, 1, sizeof( sourcecode1 ), f );
 	fclose( f );

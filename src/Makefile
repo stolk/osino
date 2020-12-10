@@ -55,5 +55,6 @@ clienttest: clienttest.c osino_cuda_client.c computefield.cu
 
 
 anim.mp4: anim/im0000.ppm Makefile
-	ffmpeg -r 30 -i anim/im%04d.ppm -c:v mpeg4 -b:v 5M anim.mp4
+	#ffmpeg -r 30 -i anim/im%04d.ppm -c:v libx264 -b:v 5M anim.mp4
+	ffmpeg -framerate 60 -i "anim/im%04d.ppm" -codec:v libx264 -vf format=yuv420p -preset slow -crf 15 -an anim.mp4
 

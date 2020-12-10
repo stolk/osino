@@ -115,7 +115,7 @@ int osino_cuda_client_init(void)
 
 	// compute
 
-	const char* ptxname  = "kernels-cu/computefield.ptx";
+	const char* ptxname  = "cuda/kernels-cu/computefield.ptx";
 
 	const char* funname0 = "osino_computefield";
 	const char* funname1 = "osino_computematter";
@@ -140,7 +140,7 @@ int osino_cuda_client_init(void)
 
 	// classify
 
-	moduleLoadResult = cuModuleLoad(&module_classify, "kernels-cu/classifyfield.ptx");
+	moduleLoadResult = cuModuleLoad(&module_classify, "cuda/kernels-cu/classifyfield.ptx");
 	if (moduleLoadResult != CUDA_SUCCESS)
 		fprintf(stderr,"cuModuleLoad error: 0x%x (%s)\n", moduleLoadResult, cudaResultName(moduleLoadResult));
 	assert(moduleLoadResult == CUDA_SUCCESS);
