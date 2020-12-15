@@ -17,6 +17,17 @@
 
 static uint64_t platform=0;
 
+
+int osino_client_num_opencl_platforms(void)
+{
+#if HASOPENCL
+	return osino_opcl_num_platforms();
+#else
+	return 0;
+#endif
+}
+
+
 //! Before using compute kernels.
 uint64_t osino_client_init(uint64_t flags)
 {

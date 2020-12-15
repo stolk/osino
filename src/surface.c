@@ -5,7 +5,7 @@
 
 #include <inttypes.h>
 #include <immintrin.h>
-#include <cuda_fp16.h>
+//#include <cuda_fp16.h>
 #include <math.h>
 
 #include "surface.h"

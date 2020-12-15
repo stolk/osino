@@ -43,6 +43,9 @@ extern void osino_client_release(int slot);
 //! Check to see how many slots in use.
 extern int  osino_client_usage(void);
 
+//! Check how many opencl platforms.
+extern int  osino_client_num_opencl_platforms(void);
+
 //! Returns a request id.
 extern int  osino_client_computefield (int stride, int gridOff[3], int fullres, const float offsets[3], float domainwarp, float freq, float lacunarity, float persistence);
 

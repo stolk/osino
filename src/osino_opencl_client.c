@@ -45,7 +45,7 @@ static size_t preferred_multiple;		// Workgroup should be a multiple of this.
 { \
 	const char* s = clErrorString( err ); \
 	if ( err != CL_SUCCESS ) \
-		LOGE( "CL Error %s:%d %s", __FILE__, __LINE__, s ); \
+		LOGE( "CL Error %s:%d %s(%d)", __FILE__, __LINE__, s, err ); \
 }
 
 
@@ -75,6 +75,22 @@ static void opencl_notify
 {
 	LOGE( "OpenCL called back with error: %s", errinfo );
 	//ASSERT( 0 );
+}
+
+
+int osino_opcl_num_platforms( void )
+{
+	cl_int err;
+	cl_platform_id platforms[16];
+	cl_uint num_platforms=-1;
+	err = clGetPlatformIDs
+	(
+		16,
+		platforms,
+		&num_platforms
+	);
+	CHECK_CL
+	return num_platforms;
 }
 
 
